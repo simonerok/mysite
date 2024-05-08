@@ -18,7 +18,7 @@ def git_update():
 ##############################
 @get("/")
 def _():
-    return "Home"
+    return template("index.html")
  
 ##############################
 try:
