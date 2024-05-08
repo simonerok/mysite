@@ -14,11 +14,17 @@ def git_update():
   origin.pull()
   return ""
  
- 
+##############################
+@get("/app.css")
+def _():
+    return static_file("app.css", ".")
+
 ##############################
 @get("/")
 def _():
     return template("index.html")
+
+
  
 ##############################
 try:
