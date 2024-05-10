@@ -601,6 +601,16 @@ video {
   color: rgb(12 74 110 / var(--tw-text-opacity));
 }
 
+.text-purple-800 {
+  --tw-text-opacity: 1;
+  color: rgb(107 33 168 / var(--tw-text-opacity));
+}
+
+.text-green-800 {
+  --tw-text-opacity: 1;
+  color: rgb(22 101 52 / var(--tw-text-opacity));
+}
+
 @media (min-width: 768px) {
   .md\:w-1\/2 {
     width: 50%;

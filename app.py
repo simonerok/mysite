@@ -25,11 +25,23 @@ def _():
    return template("index.html")
 
 ##############################
+@get("/succes")
+def _():
+    return template("succes.html")
+
+
+
+##############################
 @get("/login")
 def _():
-    return template("login.html")
-
-
+     form_login = template("__form_login")
+     return f"""
+        <template mix-target="form_login" mix-replace>
+          {form_login}
+        </template>
+        <template mix-redirect="/succes">
+        </template>
+        """
 
 
 ############# CONNECT TO PYTHONANYWHERE #################
