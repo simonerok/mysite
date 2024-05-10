@@ -5,7 +5,8 @@
 #########################
 from bottle import default_app, get, post, run, template, static_file
 import git
- 
+import x
+
 
  
 ##############################
@@ -18,12 +19,15 @@ def _():
 def _():
     return static_file("mixhtml.js", ".")
 
+
 ##############################
 @get("/")
 def _():
-    return template("index.html")
+   return template("index.html")
 
-##############################
+
+
+############# CONNECT TO PYTHONANYWHERE #################
 @post('/secret_url_for_git_hook')
 def git_update():
   repo = git.Repo('./mysite')

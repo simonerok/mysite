@@ -1,0 +1,14 @@
+%import x
+
+<form id="form_login" autocomplete="off" class="flex flex-col gap-2 w-full mx-4 md:w-1/2">
+    <input name="user_email" class="w-full border" type="text" placeholder="email" value="">
+    <input name="user_password" class="w-full border" type="password" placeholder="password" value="">
+    <button id="login_btn"
+        mix-data="#form_login"
+        mix-post="/login"
+        mix-default="Login"
+        mix-await="Loading..."
+    >
+        Login
+    </button>
+</form>
