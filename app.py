@@ -7,7 +7,6 @@ from bottle import default_app, get, post, run, template, static_file
 import git
 import x
 
-
  
 ##############################
 @get("/app.css")
@@ -24,6 +23,12 @@ def _():
 @get("/")
 def _():
    return template("index.html")
+
+##############################
+@get("/login")
+def _():
+    return template("login.html")
+
 
 
 
