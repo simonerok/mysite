@@ -20,9 +20,15 @@ def _():
     return static_file("app.css", ".")
 
 ##############################
+@get("/mixhtml.js")
+def _():
+    return static_file("mixhtml.js", ".")
+
+##############################
 @get("/")
 def _():
     return template("index.html")
+
 
 
  
