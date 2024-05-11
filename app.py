@@ -7,7 +7,7 @@ from bottle import default_app, get, post, run, template, static_file, response
 import git
 import os
 import x
-from icecream import ic
+#from icecream import ic
 
  
 ##############################
@@ -47,7 +47,7 @@ def _():
         q = db.execute("SELECT * FROM users WHERE user_email = ? AND user_password = ?", (user_email, user_password))
         user = q.fetchone()
         if not user: raise Exception("user not found", 400)
-        ic(user)
+        print(user)
         return f"""
         <template mix-redirect="/success">
         </template>

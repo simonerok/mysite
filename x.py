@@ -1,5 +1,5 @@
 from bottle import request, response, template
-from icecream import ic
+#from icecream import ic
 import os
 import sqlite3
 
@@ -29,7 +29,7 @@ def db():
 ##skelet email validation
 def validate_user_email():
     user_email = request.forms.get("user_email")
-    ic(user_email)
+    print(user_email)
     if not user_email:
         raise Exception("user_email is empty", 400)
     if not "@" in user_email:
@@ -39,7 +39,7 @@ def validate_user_email():
 ##skelet password validation
 def validate_user_password():
     user_password = request.forms.get("user_password")
-    ic(user_password)   
+    print(user_password)   
     if not user_password:
         raise Exception("user_password is empty", 400)
     return user_password
