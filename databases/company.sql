@@ -25,7 +25,7 @@ INSERT INTO users VALUES(
     "Jhon",
     "Doe",
     "admin@company.com",
-    "$2a$12$I7VzQeZtFDqu9CPCPEUDv.NG4dapERcTsTSNgkdqPxDv8Ik3QPTNC",
+    "pass",
     "admin",
     1715329042,
     0,
