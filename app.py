@@ -9,6 +9,17 @@ import os
 import x
 #from icecream import ic
 
+
+############# CONNECT TO PYTHONANYWHERE #################
+@post('/secret_url_for_git_hook')
+def git_update():
+  repo = git.Repo('./mysite')
+  origin = repo.remotes.origin
+  repo.create_head('main', origin.refs.main).set_tracking_branch(origin.refs.main).checkout()
+  origin.pull()
+  return ""
+ 
+
  
 ##############################
 @get("/app.css")
@@ -39,15 +50,7 @@ def _():
 
 
 
-############# CONNECT TO PYTHONANYWHERE #################
-@post('/secret_url_for_git_hook')
-def git_update():
-  repo = git.Repo('./mysite')
-  origin = repo.remotes.origin
-  repo.create_head('main', origin.refs.main).set_tracking_branch(origin.refs.main).checkout()
-  origin.pull()
-  return ""
- 
+
 ##############################
 
 if "PYTHONANYWHERE_DOMAIN" in os.environ:
