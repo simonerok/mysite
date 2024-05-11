@@ -75,13 +75,7 @@ def git_update():
  
 ##############################
 
-#if "PYTHONANYWHERE_DOMAIN" in os.environ:
-#    application = default_app()
-#else:
-#  run(host="127.0.0.1", port=80, debug=True, reloader=True) 
-
-try:
-    import production
+if "PYTHONANYWHERE_DOMAIN" in os.environ:
     application = default_app()
-except:
-    run(host="0.0.0.0", port=80, debug=True, reloader=True, interval=0.5)
+else:
+  run(host="127.0.0.1", port=80, debug=True, reloader=True) 

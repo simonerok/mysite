@@ -8,7 +8,6 @@ def dict_factory(cursor, row):
     col_names = [col[0] for col in cursor.description]
     return {key: value for key, value in zip(col_names, row)}
 
-
 ############## CONNECT TO DATABASE ################
 def db():
     # if Python discovers an error, it puts the error inside ex (see in terminal) 
@@ -24,7 +23,6 @@ def db():
         print(ex)
     finally:
         pass
-
 
 ##skelet email validation
 def validate_user_email():
