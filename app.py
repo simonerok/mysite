@@ -37,32 +37,7 @@ def _():
 def _():
    return template("success.html")
 
-##############################
-@post("/login")
-def _():
-    try:
-        user_email = x.validate_user_email()
-        user_password = x.validate_user_password()
-        db = x.db()
-        q = db.execute("SELECT * FROM users WHERE user_email = ? AND user_password = ?", (user_email, user_password))
-        user = q.fetchone()
-        if not user: raise Exception("user not found", 400)
-        print(user)
-        return f"""
-        <template mix-redirect="/success">
-        </template>
-        """
-    except Exception as ex:
-        response.status = ex.args[1]
-        return f"""
-        <template>
-            <div mix-ttl="3000" class="error">
-                {ex.args}
-            </div>
-        </template>
-        """
-    finally:
-        if "db" in locals(): db.close()
+
 
 ############# CONNECT TO PYTHONANYWHERE #################
 @post('/secret_url_for_git_hook')
