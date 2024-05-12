@@ -622,22 +622,8 @@ video {
   color: rgb(12 74 110 / var(--tw-text-opacity));
 }
 
-#toast .ok {
-  border-radius: 9999px;
-  --tw-bg-opacity: 1;
-  background-color: rgb(21 128 61 / var(--tw-bg-opacity));
-  padding: 1rem;
-  --tw-text-opacity: 1;
-  color: rgb(255 255 255 / var(--tw-text-opacity));
-}
-
-#toast .error {
-  border-radius: 9999px;
-  --tw-bg-opacity: 1;
-  background-color: rgb(157 23 77 / var(--tw-bg-opacity));
-  padding: 1rem;
-  --tw-text-opacity: 1;
-  color: rgb(255 255 255 / var(--tw-text-opacity));
+.mix-error{
+  background-color: rgb(215, 68, 68);
 }
 
 @media (min-width: 768px) {
