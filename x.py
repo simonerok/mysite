@@ -1,4 +1,4 @@
-from bottle import request, response, template
+from bottle import request
 #from icecream import ic
 import os
 import sqlite3
@@ -37,9 +37,9 @@ def validate_email():
     return user_email
 
 ################# PASSWORD VALIDATION ############################
-USER_PASSWORD_MIN = 4
+USER_PASSWORD_MIN = 6
 USER_PASSWORD_MAX = 50
-USER_PASSWORD_REGEX = "^.{4,50}$"
+USER_PASSWORD_REGEX = "^.{6,50}$"
 
 def validate_password():
     error = f"password {USER_PASSWORD_MIN} to {USER_PASSWORD_MAX} characters"

@@ -3,11 +3,11 @@
 # https://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@github.com/simonerok/mysite.git
 
 #########################
-from bottle import default_app, get, post, run, template, static_file, response
+from bottle import default_app, get, post, run, template, static_file, response, request
 import git
 import os
 import x
-#from icecream import ic
+from icecream import ic
 
 
 ############# CONNECT TO PYTHONANYWHERE #################
@@ -49,18 +49,16 @@ def _():
 ##############################
 @post("/login")
 def _():
-    try:
+    try:    
         user_email = x.validate_email()
         user_password = x.validate_password()
         db = x.db()
         q = db.execute("SELECT * FROM users WHERE user_email = ? AND user_password = ?", (user_email, user_password))
         user = q.fetchone()
-        print(user)
+        ic(user)
         if not user: raise Exception("user not found", 400)
-        else:
-          return f"""
+        return f"""
                 <html>
-                <head><title>Login Success</title></head>
                 <body>
                     <h1>Login was successful!</h1>
                     <script>
@@ -72,13 +70,27 @@ def _():
                 </html>
                 """ 
     except Exception as ex:
-        response.status = 500
-        if len(ex.args) > 1:
+        try:
             response.status = ex.args[1]
-        return f"<div class='error'>{ex.args[0] if ex.args else 'Unknown error'}</div>"
+            return f"""
+            <html>
+                <body>
+                    {ex.args[1]} {ex.args[0]}
+                </body>
+                </html>
+            """
+        except Exception as ex:
+            ic(ex)
+            response.status = 500
+            return  f"""
+            <html>
+                <body>
+                    <p>system under maintenance</p>
+                </body>
+                </html>
+            """
     finally:
-        if "db" in locals():
-            db.close()
+        if "db" in locals(): db.close()
 
 
 ##############################
