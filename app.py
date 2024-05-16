@@ -112,31 +112,34 @@ def _():
         user_role = x.validate_user_role()
         user_pk = str(uuid.uuid4().hex)
         user_created_at = int(time.time())
+        
     
-        db = x.db()
-        q = db.execute("INSERT INTO users (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at, user_updated_at, user_is_verified, user_is_blocked, user_deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '0', '0', '0', '0')", (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at))
-        db.commit() 
-        print("XXXXXXXXXXXXXXX user created XXXXXXXXXXX") 
-  
-        return redirect("/success")
-    except Exception as ex:
         try:
-            response.status = ex.args[1]
-            return f"""
+            db = x.db()
+            q = db.execute("INSERT INTO users (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at, user_updated_at, user_is_verified, user_is_blocked, user_deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '0', '0', '0', '0')", (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at))
+            db.commit() 
+           
+            redirect("/success")
+        except HTTPResponse:
+            raise
+        except Exception as ex:
+            print( "signup successfull")
+            try:
+                response.status = ex.args[1]
+                return f"""
             <html>
                 <body>
                     {ex.args[1]}
                 </body>
                 </html>
             """
-        except Exception as ex:
-            print(ex)
+            except Exception as ex:
+                print(ex)
             response.status = 500
             return  f"""
             <html>
                 <body>
                     <p>system under maintenance</p>
-                    <p>Error details: {ex, "XXXXXXXXXXXXXXXXXXXXXX"}</p>
                 </body>
                 </html>
             """
