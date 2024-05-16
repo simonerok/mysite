@@ -11,8 +11,11 @@ import x
 import bcrypt
 import uuid
 import time
-import smtplib
 import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 
 
 
@@ -44,10 +47,7 @@ def _():
 ##############################
 @get("/signup")
 def _():
-    try:
         return template("signup.html")
-    except Exception as ex:
-        print(f"########## {ex} ################")
 
 
 ##############################
@@ -98,6 +98,9 @@ def _():
     finally:
         if "db" in locals(): db.close()
 
+########## SIGNUP ##########
+
+   
 
 
 ###############################
@@ -119,10 +122,18 @@ def _():
             q = db.execute("INSERT INTO users (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at, user_updated_at, user_is_verified, user_is_blocked, user_deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '0', '0', '0', '0')", (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at))
             db.commit() 
            
-            redirect("/success")
-        except HTTPResponse:
-            raise
+            x.send_email_verification('ssimone12@gmail.com', user_email, user_pk)
+            print("email verification sent")
+                
         except Exception as ex:
+                print(ex, "email verification not sent")
+        finally:
+                if "db" in locals(): db.close()
+
+        redirect("/success")
+    except HTTPResponse:
+            raise
+    except Exception as ex:
             print( "signup successfull")
             try:
                 response.status = ex.args[1]

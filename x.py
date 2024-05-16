@@ -3,8 +3,9 @@ from bottle import request, template, response
 import os
 import sqlite3
 import re
-from email.mime.multipart import MIMEMultipart
+import smtplib, ssl
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 
 ############# FUNCTION TO MAKE DATABSE CODE INTO JSON OBJECT #################
@@ -19,7 +20,7 @@ def db():
     # The connect function is a way to make sure it is the right path in all projects both local and for deployment.
     try:
         db = sqlite3.connect(os.getcwd() + "/database/company.db")
-        db.execute("PRAGMA foreign_keys = ON")  # Tells the database to use restricted and cascading
+        #db.execute("PRAGMA foreign_keys = ON")  # Tells the database to use restricted and cascading
         db.row_factory = dict_factory  # Gets JSON objects
         return db
     except Exception as ex:
@@ -97,3 +98,42 @@ def validate_user_role():
     if user_role != CUSTOMER_ROLE and user_role != PARTNER_ROLE:
         raise Exception(error, 400)
     return user_role
+
+
+################# EMAIL VERIFICATION ############################
+def send_email_verification(to_email, from_email, verification_id):
+        try:
+            user_name = "Sofia"
+            user_email = "ssimone12@gmail.com"
+            user_verification = verification_id
+            message = MIMEMultipart()
+            message["To"] = 'ssimone12@gmail.com'
+            message["From"] = 'ssimone12@gmail.com'
+            message["Subject"] = 'Testing my email'
+    
+
+            email_body = template("email/test_email_link.html", name=user_name, email=user_email, verification=user_verification)
+            messageText = MIMEText(email_body, 'html')
+            message.attach(messageText)
+    
+            email = 'ssimone12@gmail.com'
+            password = 'usfkdsdexmqjvbdb'
+    
+            server = smtplib.SMTP('smtp.gmail.com:587')
+            server.ehlo('Gmail')
+            server.starttls()
+            server.login(email,password)
+            from_email = 'ssimone12@gmail.com'
+            to_email  = 'ssimone12@gmail.com'
+            server.sendmail(from_email,to_email,message.as_string())
+            server.quit()
+            response.status = 200
+            return "Signup email sent successfully!"
+        except Exception as ex:
+            print(ex)
+            response.status = 500
+            return "Error sending signup email."
+        finally:
+            pass  
+
+
