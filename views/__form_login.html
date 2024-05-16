@@ -1,6 +1,6 @@
 %import x
-<form action="/login" method="POST" id="form_login" class="flex flex-col gap-2 w-full mx-4 md:w-1/2">
-    <h1 class="text-center">Please enter your credentials below</h1>
+<form method="POST" id="form_login" class="flex flex-col gap-2 w-full mx-4 md:w-1/2">
+    <h1 class="text-center font-bold mb-4">Please enter your credentials below</h1>
     <input name="user_email" class="w-full border" type="text" placeholder="email" value="" mix-check="{{x.EMAIL_REGEX}}">
     <input name="user_password" class="w-full border" type="password" placeholder="password" value="" mix-check="{{x.USER_PASSWORD_REGEX}}">
     <button class="login_btn"

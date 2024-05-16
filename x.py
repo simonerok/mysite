@@ -1,14 +1,17 @@
-from bottle import request
+from bottle import request, template, response
 #from icecream import ic
 import os
 import sqlite3
 import re
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 
 ############# FUNCTION TO MAKE DATABSE CODE INTO JSON OBJECT #################
 def dict_factory(cursor, row):
     col_names = [col[0] for col in cursor.description]
     return {key: value for key, value in zip(col_names, row)}
+
 ############## CONNECT TO DATABASE ################
 def db():
     # if Python discovers an error, it puts the error inside ex (see in terminal) 
@@ -47,3 +50,50 @@ def validate_password():
     if not re.match(USER_PASSWORD_REGEX, user_password): raise Exception(error, 400)
     return user_password
 
+
+################ USER NAME VALIDATION ##############
+
+USER_USERNAME_MIN = 2
+USER_USERNAME_MAX = 20
+USER_USERNAME_REGEX = "^[a-zA-Z]{2,20}$"
+
+def validate_user_username():
+    error = f"username {USER_USERNAME_MIN} to {USER_USERNAME_MAX} lowercase english letters"
+    user_username = request.forms.get("user_username", "").strip()
+    if not re.match(USER_USERNAME_REGEX, user_username): raise Exception(error, 400)
+    return user_username
+
+############# FIRST NAME VALIDATION #################
+
+USER_NAME_MIN = 2
+USER_NAME_MAX = 20
+
+
+def validate_user_first_name():
+    error = f"name {USER_NAME_MIN} to {USER_NAME_MAX} characters"
+    user_first_name = request.forms.get("user_first_name", "").strip()
+    if not re.match(USER_USERNAME_REGEX, user_first_name): raise Exception(error, 400)
+    return user_first_name
+
+##############################
+
+LAST_NAME_MIN = 2
+LAST_NAME_MAX = 20
+
+
+def validate_user_last_name():
+  error = f"last_name {LAST_NAME_MIN} to {LAST_NAME_MAX} characters"
+  user_last_name = request.forms.get("user_last_name").strip()
+  if not re.match(USER_USERNAME_REGEX, user_last_name): raise Exception(error, 400)
+  return user_last_name
+
+############# USER ROLE VALIDATION #################
+CUSTOMER_ROLE = "customer"
+PARTNER_ROLE = "partner"
+
+def validate_user_role():
+    user_role = request.forms.get("user_role", "").strip()
+    error = f"The role ###{user_role}### is invalid. Must be {CUSTOMER_ROLE} or {PARTNER_ROLE}"
+    if user_role != CUSTOMER_ROLE and user_role != PARTNER_ROLE:
+        raise Exception(error, 400)
+    return user_role

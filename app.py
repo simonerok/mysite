@@ -1,13 +1,19 @@
 # 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
 
+#my special URL
 # https://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@github.com/simonerok/mysite.git
 
 #########################
-from bottle import default_app, get, post, run, template, static_file, response, request
+from bottle import default_app, get, post, run, template, static_file, response, request, redirect, HTTPResponse
 import git
 import os
 import x
-from icecream import ic
+import bcrypt
+import uuid
+import time
+import smtplib
+import random
+
 
 
 ############# CONNECT TO PYTHONANYWHERE #################
@@ -36,6 +42,15 @@ def _():
    return template("index.html")
 
 ##############################
+@get("/signup")
+def _():
+    try:
+        return template("signup.html")
+    except Exception as ex:
+        print(f"########## {ex} ################")
+
+
+##############################
 @get("/login")
 def _():
    return template("login.html")
@@ -55,32 +70,23 @@ def _():
         db = x.db()
         q = db.execute("SELECT * FROM users WHERE user_email = ? AND user_password = ?", (user_email, user_password))
         user = q.fetchone()
-        ic(user)
+        print(user)
         if not user: raise Exception("user not found", 400)
-        return f"""
-                <html>
-                <body>
-                    <h1>Login was successful!</h1>
-                    <script>
-                        setTimeout(function() {{
-                            window.location.href = '/success';
-                        }}, 3000); // Redirect after 3 seconds
-                    </script>
-                </body>
-                </html>
-                """ 
+        redirect("/success")
+    except HTTPResponse:
+        raise
     except Exception as ex:
         try:
             response.status = ex.args[1]
             return f"""
             <html>
                 <body>
-                    {ex.args[1]} {ex.args[0]}
+                    {ex.args[1]}
                 </body>
                 </html>
             """
         except Exception as ex:
-            ic(ex)
+            print(ex)
             response.status = 500
             return  f"""
             <html>
@@ -91,6 +97,52 @@ def _():
             """
     finally:
         if "db" in locals(): db.close()
+
+
+
+###############################
+@post("/signup")
+def _():
+    try:
+        user_email = x.validate_email()
+        user_password = x.validate_password()
+        user_username = x.validate_user_username()
+        user_first_name = x.validate_user_first_name()
+        user_last_name = x.validate_user_last_name()
+        user_role = x.validate_user_role()
+        user_pk = str(uuid.uuid4().hex)
+        user_created_at = int(time.time())
+    
+        db = x.db()
+        q = db.execute("INSERT INTO users (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at, user_updated_at, user_is_verified, user_is_blocked, user_deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '0', '0', '0', '0')", (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at))
+        db.commit() 
+        print("XXXXXXXXXXXXXXX user created XXXXXXXXXXX") 
+  
+        return redirect("/success")
+    except Exception as ex:
+        try:
+            response.status = ex.args[1]
+            return f"""
+            <html>
+                <body>
+                    {ex.args[1]}
+                </body>
+                </html>
+            """
+        except Exception as ex:
+            print(ex)
+            response.status = 500
+            return  f"""
+            <html>
+                <body>
+                    <p>system under maintenance</p>
+                    <p>Error details: {ex, "XXXXXXXXXXXXXXXXXXXXXX"}</p>
+                </body>
+                </html>
+            """
+    finally:
+        if "db" in locals(): db.close()
+
 
 
 ##############################

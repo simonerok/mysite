@@ -3,9 +3,27 @@
 @tailwind utilities;
 
 
-.mix-error{
-    background-color: rgb(215, 68, 68);
+/* general */
+main{
+    @apply pt-20;
 }
+
+/* forms */
+
+form{
+    @apply w-full;
+}
+
+input{
+    @apply px-2 border border-neutral-400;
+}
+
+/* buttons */
+button{
+    @apply text-slate-800 font-bold bg-slate-300 w-1/2 self-center p-2 rounded-md m-4;
+}
+
+/* validation */
 
 #toast .ok{
     @apply p-4 text-white bg-green-600 rounded-full;

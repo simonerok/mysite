@@ -8,12 +8,19 @@
     <title>{{ get ('title', "My site") }}</title>
 </head>
 <body>
-    <nav class="m-5">
-        <div class="flex gap-4 ml-auto">
-            <a href="/">Home</a>
+    <div id="toast" class="fixed top-4 flex items-center justify-center w-full pointer-events-none z-10"></div>
+    <nav class="p-4 bg-slate-700 flex justify-between gap-4 ml-auto text-white mb-8">
+        <div class="bg-slate-300 p-2 rounded-md text-slate-800 font-bold">
+            <a href="/">MySite BnB</a>
+        </div>
+        <div>
+            <a class="pr-5" href="/signup">
+                Signup
+            </a>
             <a href="/login">
                 Login
-            </a>
+            </a> 
         </div>
+           
     </nav>
     
