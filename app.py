@@ -13,6 +13,7 @@ import uuid
 import time
 import random
 import smtplib
+from icecream import ic
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -122,7 +123,7 @@ def _():
             q = db.execute("INSERT INTO users (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at, user_updated_at, user_is_verified, user_is_blocked, user_deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '0', '0', '0', '0')", (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at))
             db.commit() 
            
-            x.send_email_verification('ssimone12@gmail.com', user_email, user_pk)
+            x.send_email_verification(user_email, 'ssimone12@gmail.com', user_pk)
             print("email verification sent")
                 
         except Exception as ex:
@@ -158,10 +159,50 @@ def _():
         if "db" in locals(): db.close()
 
 
+############ ACTIVATE USER ##################
+@get("/activate-user/<id>")
+def _(id):
+    try:
+        db = x.db()
+        q = db.execute("UPDATE users SET user_is_verified = 1 WHERE user_pk = ?", (id,))
+        user_first_name = db.execute("SELECT user_first_name FROM users WHERE user_pk = ?", (id,)).fetchone()["user_first_name"]
+        db.commit()
+
+        ic(f"################################  {user_first_name}   #####################################")
+        
+        # return f"Activated user with ID: {id}"
+        return template("activate_user.html", user_first_name=user_first_name) 
+    
+    except Exception as ex:
+        ic(ex, "failed to activate user")
+        return f"Failed to activate user with ID: {id}"
+        
+    finally:
+        if "db" in locals(): db.close()
+
+################## CHECK EMAIL ##########################################
+@post("/check-email")
+def _():
+    try:
+        email = x.validate_email()
+
+        return email
+        
+    except Exception as ex:
+        print(ex)
+        return f"""
+
+            <template mix-target="#message">
+                <div>
+                    Please enter a valid email
+                </div>
+            </template>
+    
+        """
 
 ##############################
 #function to run the app and check if it is running on pythonanywhere or local
 if "PYTHONANYWHERE_DOMAIN" in os.environ:
     application = default_app()
 else:
-  run(host="127.0.0.1", port=80, debug=True, reloader=True) 
+  run(host="0.0.0.0", port=80, debug=True, reloader=True, interval=0.1) 

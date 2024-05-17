@@ -102,38 +102,55 @@ def validate_user_role():
 
 ################# EMAIL VERIFICATION ############################
 def send_email_verification(to_email, from_email, verification_id):
-        try:
-            user_name = "Sofia"
-            user_email = "ssimone12@gmail.com"
-            user_verification = verification_id
+    try:
             message = MIMEMultipart()
-            message["To"] = 'ssimone12@gmail.com'
-            message["From"] = 'ssimone12@gmail.com'
-            message["Subject"] = 'Testing my email'
+            message["To"] = to_email
+            message["From"] = from_email
+            message["Subject"] = 'Verify email'
     
 
-            email_body = template("email/test_email_link.html", name=user_name, email=user_email, verification=user_verification)
+            email_body= f""" 
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8" />
+                            <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1.0"
+                            />
+                            <title>Verify Email</title>
+                        </head>
+                        <body>
+                            <h1>You need to verify your account</h1>
+                            <a href="http://127.0.0.1/activate-user/{verification_id}">Activate user </a>
+                        </body>
+                        </html>
+
+             """
+ 
             messageText = MIMEText(email_body, 'html')
             message.attach(messageText)
     
-            email = 'ssimone12@gmail.com'
+            email = from_email
             password = 'usfkdsdexmqjvbdb'
     
             server = smtplib.SMTP('smtp.gmail.com:587')
             server.ehlo('Gmail')
             server.starttls()
             server.login(email,password)
-            from_email = 'ssimone12@gmail.com'
-            to_email  = 'ssimone12@gmail.com'
+            from_email = from_email
+            to_email  = to_email
             server.sendmail(from_email,to_email,message.as_string())
+    
             server.quit()
             response.status = 200
             return "Signup email sent successfully!"
-        except Exception as ex:
+    except Exception as ex:
             print(ex)
             response.status = 500
             return "Error sending signup email."
-        finally:
+    finally:
             pass  
 
 
