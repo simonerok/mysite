@@ -122,8 +122,8 @@ def send_email_verification(to_email, from_email, verification_id):
                             <title>Verify Email</title>
                         </head>
                         <body>
-                            <h1>You need to verify your account</h1>
-                            <a href="http://127.0.0.1/activate-user/{verification_id}">Activate user </a>
+                            <h1>Please verify your account by cliking the link below</h1>
+                            <a href="http://127.0.0.1/activate-user/{verification_id}">Activate account </a>
                         </body>
                         </html>
 
@@ -152,5 +152,25 @@ def send_email_verification(to_email, from_email, verification_id):
             return "Error sending signup email."
     finally:
             pass  
+    
 
+    ############# CHECK IF USER IS LOGGED IN #################
+def validate_user_logged():
+    user = request.get_cookie("user", secret='my_secret_cookie')
+    if user is None: raise Exception("user must login", 400)
+    return user
+
+############# NO CASCHE - prevent browser from rembering login #################
+def no_cache():
+    response.add_header("Cache-Control", "no-cache, no-store, must-revalidate")
+    response.add_header("Pragma", "no-cache")
+    response.add_header("Expires", 0)   
+
+
+############# IS COOKIE HTTPS #################
+def is_cookie_https():
+     if 'PYTHONANYWHERE_DOMAIN' in os.environ:
+        return True
+     else:
+          return False
 

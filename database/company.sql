@@ -37,6 +37,9 @@ INSERT INTO users VALUES(
 
 SELECT * FROM users;
 
+/* set my user to be admin */
+UPDATE users SET user_role = "admin" WHERE user_username = "AdminSofia";
+
 
 
 

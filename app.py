@@ -57,9 +57,40 @@ def _():
    return template("login.html")
 
 ##############################
+@get("/logout")
+def _():
+    response.delete_cookie("user")
+    response.status = 303
+    response.set_header('Location', '/login')
+    return
+
+
+##############################
 @get("/success")
 def _():
-   return template("success.html")
+   
+   return template("success.html", is_logged=True)
+
+##############################
+@get("/profile")
+def _():
+    try:
+        x.no_cache
+        x.validate_user_logged()
+        return template("profile.html", is_logged=True)
+    except Exception as ex:
+        ic(ex, "XXXXXXX ERROR LOGGING IN XXXXX")
+        response.status = 303 
+        response.set_header('Location', '/login')
+        return
+    finally:
+        pass
+
+##############################
+@get("/not_verified")
+def _():
+   return template("not_verified.html")
+
 
 
 ##############################
@@ -68,16 +99,24 @@ def _():
     try:    
         user_email = x.validate_email()
         user_password = x.validate_password()
+
         db = x.db()
-        q = db.execute("SELECT * FROM users WHERE user_email = ? AND user_password = ?", (user_email, user_password))
+        q = db.execute("SELECT * FROM users WHERE user_email = ?", (user_email,))
         user = q.fetchone()
-        print(user)
-        if not user: raise Exception("user not found", 400)
-        redirect("/success")
+        if(user):
+            if not bcrypt.checkpw(user_password.encode(), user["user_password"]): raise Exception("Invalid credentials", 400)
+            if(user['user_is_verified'] == 1):
+                response.set_cookie("user", user["user_pk"], secret="my_secret_cookie", httponly=True, secure=x.is_cookie_https())
+                redirect("/profile")
+            else:
+                return template("not_verified.html")
+        else: 
+            raise Exception("Invalid credentials", 400)
     except HTTPResponse:
         raise
     except Exception as ex:
         try:
+            ic(ex)
             response.status = ex.args[1]
             return f"""
             <html>
@@ -87,7 +126,7 @@ def _():
                 </html>
             """
         except Exception as ex:
-            print(ex)
+            ic(ex)
             response.status = 500
             return  f"""
             <html>
@@ -99,9 +138,6 @@ def _():
     finally:
         if "db" in locals(): db.close()
 
-########## SIGNUP ##########
-
-   
 
 
 ###############################
@@ -116,11 +152,22 @@ def _():
         user_role = x.validate_user_role()
         user_pk = str(uuid.uuid4().hex)
         user_created_at = int(time.time())
+
+        #makes a byte string of the password
+        password = user_password.encode()
+        salt = bcrypt.gensalt()
+        # hashed password using bcrypt
+        hashed = bcrypt.hashpw(password, salt)
+
+        #print salt and hashed password
+        ic(salt)
+        ic(hashed)
+
+
         
-    
         try:
             db = x.db()
-            q = db.execute("INSERT INTO users (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at, user_updated_at, user_is_verified, user_is_blocked, user_deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '0', '0', '0', '0')", (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at))
+            q = db.execute("INSERT INTO users (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at, user_updated_at, user_is_verified, user_is_blocked, user_deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '0', '0', '0', '0')", (user_pk, user_username, user_first_name, user_last_name, user_email, hashed, user_role, user_created_at))
             db.commit() 
            
             x.send_email_verification(user_email, 'ssimone12@gmail.com', user_pk)
@@ -135,7 +182,7 @@ def _():
     except HTTPResponse:
             raise
     except Exception as ex:
-            print( "signup successfull")
+            print( "signup was not successful")
             try:
                 response.status = ex.args[1]
                 return f"""
@@ -168,14 +215,13 @@ def _(id):
         user_first_name = db.execute("SELECT user_first_name FROM users WHERE user_pk = ?", (id,)).fetchone()["user_first_name"]
         db.commit()
 
-        ic(f"################################  {user_first_name}   #####################################")
+        ic(f"################################ SUCCESS #####################################")
         
-        # return f"Activated user with ID: {id}"
         return template("activate_user.html", user_first_name=user_first_name) 
     
     except Exception as ex:
         ic(ex, "failed to activate user")
-        return f"Failed to activate user with ID: {id}"
+        return f"Failed to activate user {id}"
         
     finally:
         if "db" in locals(): db.close()
@@ -199,6 +245,7 @@ def _():
             </template>
     
         """
+    
 
 ##############################
 #function to run the app and check if it is running on pythonanywhere or local
