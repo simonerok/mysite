@@ -157,7 +157,8 @@ def send_email_verification(to_email, from_email, verification_id):
     ############# CHECK IF USER IS LOGGED IN #################
 def validate_user_logged():
     user = request.get_cookie("user", secret='my_secret_cookie')
-    if user is None: raise Exception("user must login", 400)
+    if user is None:
+        raise Exception("user must login", 400)
     return user
 
 ############# NO CASCHE - prevent browser from rembering login #################

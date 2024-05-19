@@ -57,13 +57,15 @@ def _():
    return template("login.html")
 
 ##############################
+
 @get("/logout")
 def _():
     response.delete_cookie("user")
+    response.add_header("Cache-Control", "no-cache, no-store, must-revalidate")  # Prevent caching
+    response.add_header("Pragma", "no-cache")  # Prevent caching
     response.status = 303
     response.set_header('Location', '/login')
     return
-
 
 ##############################
 @get("/success")
@@ -75,16 +77,29 @@ def _():
 @get("/profile")
 def _():
     try:
-        x.no_cache
-        x.validate_user_logged()
-        return template("profile.html", is_logged=True)
+        x.no_cache()
+        user_pk = request.get_cookie("user", secret="my_secret_cookie")
+        db = x.db()
+
+        # Fetch the user from the database
+        user = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,)).fetchone()
+
+        if user is None:
+            raise Exception("No user found with the provided primary key")
+
+        if user['user_role'] == 'partner':
+            profile_template = template("profile_partner.html", is_logged=True, user=user)
+        elif user['user_role'] == 'admin':
+            profile_template = template("profile_admin.html", is_logged=True, user=user)
+        else:
+            profile_template = template("profile_customer.html", is_logged=True, user=user)
+
+        return profile_template
     except Exception as ex:
-        ic(ex, "XXXXXXX ERROR LOGGING IN XXXXX")
+        print(ex)
         response.status = 303 
         response.set_header('Location', '/login')
         return
-    finally:
-        pass
 
 ##############################
 @get("/not_verified")
@@ -163,8 +178,6 @@ def _():
         ic(salt)
         ic(hashed)
 
-
-        
         try:
             db = x.db()
             q = db.execute("INSERT INTO users (user_pk, user_username, user_first_name, user_last_name, user_email, user_password, user_role, user_created_at, user_updated_at, user_is_verified, user_is_blocked, user_deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '0', '0', '0', '0')", (user_pk, user_username, user_first_name, user_last_name, user_email, hashed, user_role, user_created_at))

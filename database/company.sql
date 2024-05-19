@@ -39,6 +39,7 @@ SELECT * FROM users;
 
 /* set my user to be admin */
 UPDATE users SET user_role = "admin" WHERE user_username = "AdminSofia";
+UPDATE users SET user_email = "ssimone12@gmail.com" WHERE user_username = "AdminSofia";
 
 
 
