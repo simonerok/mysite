@@ -6,6 +6,7 @@ import re
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from icecream import ic 
 
 
 ############# FUNCTION TO MAKE DATABSE CODE INTO JSON OBJECT #################
@@ -154,7 +155,63 @@ def send_email_verification(to_email, from_email, verification_id):
             pass  
     
 
-    ############# CHECK IF USER IS LOGGED IN #################
+############# RESET PASSWORD #################
+def reset_password_email(to_email, from_email, verification_id):
+    try:
+
+        message = MIMEMultipart()
+        message["To"] = to_email
+        message["From"] = from_email
+        message["Subject"] = 'Reset password'
+    
+        email_body= f""" 
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8" />
+                            <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1.0"
+                            />
+                            <title>Reset password</title>
+                        </head>
+                        <body>
+                            <h1>Please click the link below to update your password</h1>
+                            <a href="http://127.0.0.1/update-password/{verification_id}">update password </a>
+                        </body>
+                        </html>
+
+             """
+ 
+        messageText = MIMEText(email_body, 'html')
+        message.attach(messageText)
+ 
+        email = from_email
+        password = 'usfkdsdexmqjvbdb'
+ 
+        server = smtplib.SMTP('smtp.gmail.com:587')
+        server.ehlo('Gmail')
+        server.starttls()
+        server.login(email,password)
+        from_email = from_email
+        to_email  = to_email
+        ic("Attempting to send email...")
+        server.sendmail(from_email,to_email,message.as_string())
+        ic("Email sent.")
+ 
+        server.quit()
+        response.status = 200
+        return "email reset password sent successfully!"
+    except Exception as ex:
+            print(ex)
+            response.status = 500
+            return "Error sending reset password email."
+    finally:
+            pass  
+    
+
+############# CHECK IF USER IS LOGGED IN #################
 def validate_user_logged():
     user = request.get_cookie("user", secret='my_secret_cookie')
     if user is None:
@@ -166,6 +223,7 @@ def no_cache():
     response.add_header("Cache-Control", "no-cache, no-store, must-revalidate")
     response.add_header("Pragma", "no-cache")
     response.add_header("Expires", 0)   
+    
 
 
 ############# IS COOKIE HTTPS #################

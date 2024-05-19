@@ -54,6 +54,7 @@ def _():
 ##############################
 @get("/login")
 def _():
+   x.no_cache()
    return template("login.html")
 
 ##############################
@@ -70,9 +71,13 @@ def _():
 ##############################
 @get("/success")
 def _():
-   
    return template("success.html", is_logged=True)
 
+##############################
+@get("/forgot-password")
+def _():
+        return template("forgot_password.html")
+ 
 ##############################
 @get("/profile")
 def _():
@@ -259,6 +264,34 @@ def _():
     
         """
     
+
+##############################
+@post("/reset-password-email")
+def _():
+    try:
+        user_email = x.validate_email()
+
+        db = x.db()
+        q = db.execute("SELECT * FROM users WHERE user_email = ? LIMIT 1", (user_email,))
+        user = q.fetchone()
+        x.reset_password_email("ssimone12@gmail.com", user_email, user["user_pk"])
+        return f"{user}"
+    except Exception as ex:
+        print(ex, "reset password email not sent")
+    finally:
+        if "db" in locals(): db.close()
+
+############ CHANGE PASSWORD ##################
+@get("/update-password/<id>")
+def _(id):
+    try:
+
+        return template("update_password.html", id=id)
+    except Exception as ex:
+        print(ex)
+
+    finally:
+        pass
 
 ##############################
 #function to run the app and check if it is running on pythonanywhere or local
