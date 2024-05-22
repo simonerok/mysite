@@ -1,6 +1,10 @@
 function cl(text){console.log(text)}
 
-history.replaceState({"mixonurl":mix_replace_url}, "title", mix_replace_url)
+try{
+    history.replaceState({"mixonurl":mix_replace_url}, "title", mix_replace_url)
+}catch(err){
+    
+}
 
 
 // ##############################
@@ -116,7 +120,10 @@ function process_template(mix_url){
 
 
     
-    if( ! document.querySelector("template[mix-target]") ){ cl(`mix-target not found`); return }
+    if( ! document.querySelector("template[mix-target]") && ! document.querySelector("template[mix-function]") ){ 
+        cl(`eror = mix-target nor mix-function found`)
+        return 
+    }
     document.querySelectorAll('template[mix-target]').forEach(template => {
         // console.log("template", template)  
 
@@ -155,6 +162,12 @@ function process_template(mix_url){
         mixonurl(mix_url)
 
     })
+    document.querySelectorAll('template[mix-function]').forEach(template => {
+        function_name = template.getAttribute("mix-function")
+        console.log(`ok : mix() the response data will run the function '${function_name}'`)
+        window[function_name](template.innerHTML)
+        template.remove()
+    })    
 }
 
 
@@ -206,11 +219,10 @@ setInterval(function(){
         if(el.getAttribute("mix-ttl") <= 0){
             el.remove()
         }else{
-
-            el.setAttribute("mix-ttl", el.getAttribute("mix-ttl") - 250)
+            el.setAttribute("mix-ttl", el.getAttribute("mix-ttl") - 1000)
         }
     })
-}, 250)
+}, 500)
 
 // ##############################
 function mix_convert(){

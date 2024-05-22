@@ -43,7 +43,14 @@ def _():
 ##############################
 @get("/")
 def _():
-   return template("index.html")
+    user_cookie = request.get_cookie("user", secret='my_secret_cookie')
+
+    if user_cookie:
+        ic("logged in")
+    else:
+        ic("not logged in")
+
+    return template("index.html")
 
 ##############################
 @get("/signup")
@@ -108,7 +115,7 @@ def _():
 
         return profile_template
     except Exception as ex:
-        print(ex)
+        ic(ex)
         response.status = 303 
         response.set_header('Location', '/login')
         return
@@ -116,55 +123,60 @@ def _():
 
 
 
-##############################
 @post("/login")
 def _():
     try:    
         user_email = x.validate_email()
         user_password = x.validate_password()
-
         db = x.db()
         q = db.execute("SELECT * FROM users WHERE user_email = ?", (user_email,))
         user = q.fetchone()
         if(user):
-            ic(user_password, user["user_password"])
-            if not bcrypt.checkpw(user_password.encode(), user["user_password"]): raise Exception("Invalid credentials", 400)
+            if not bcrypt.checkpw(user_password.encode(), user["user_password"]): raise Exception("Invalid credentials, try again", 400)
             if(user['user_is_verified'] == 1):
                 response.set_cookie("user", user["user_pk"], secret="my_secret_cookie", httponly=True, secure=x.is_cookie_https())
-                redirect("/profile")
+                # Instead of redirecting, return a string that contains the HTML templates
+                return f"""
+                <template mix-target="main" mix-replace>
+                    template{"__form_login.html"}
+                </template>
+                <template mix-redirect="/profile">
+                </template>
+                """
             else:
-                return template("not_verified.html")
-        else: 
-            raise Exception("Invalid credentials", 400)
-    except HTTPResponse:
-        raise
+                return f"""
+                <template mix-target="main" mix-replace>
+                    template{"not_verified.html"}
+                </template>
+                <template mix-redirect="/profile">
+                </template>
+                """
     except Exception as ex:
         try:
             ic(ex)
             response.status = ex.args[1]
             return f"""
-            <html>
-                <body>
-                    {ex.args[1]}
-                </body>
-                </html>
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="error">
+                    {ex.args[0]}
+                </div>
+            </template>
             """
         except Exception as ex:
             ic(ex)
             response.status = 500
-            return  f"""
-            <html>
-                <body>
-                    <p>system under maintenance</p>
-                </body>
-                </html>
+            return f"""
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="error">
+                   System under maintainance
+                </div>
+            </template>
             """
     finally:
         if "db" in locals(): db.close()
 
 
 
-###############################
 @post("/signup")
 def _():
     try:
@@ -193,36 +205,40 @@ def _():
             db.commit() 
            
             x.send_email_verification(user_email, 'ssimone12@gmail.com', user_pk)
-            print("email verification sent")
+            ic("email verification sent")
                 
         except Exception as ex:
-                print(ex, "email verification not sent")
+            ic(ex, "email verification not sent")
         finally:
-                if "db" in locals(): db.close()
+            if "db" in locals(): db.close()
 
-        redirect("/success")
-    except HTTPResponse:
-            raise
+        return f"""
+        <template mix-target="main" mix-replace>
+            template{"__form_login.html"}
+        </template>
+        <template mix-redirect="/success">
+        </template>
+        """
     except Exception as ex:
-            print( "signup was not successful")
-            try:
-                response.status = ex.args[1]
-                return f"""
-            <html>
-                <body>
-                    {ex.args[1]}
-                </body>
-                </html>
+        try:
+            ic(ex)
+            response.status = ex.args[1]
+            return f"""
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="error">
+                {ex.args[0]}
+                </div>
+            </template>
             """
-            except Exception as ex:
-                print(ex)
+        except Exception as ex:
+            ic(ex)
             response.status = 500
-            return  f"""
-            <html>
-                <body>
-                    <p>system under maintenance</p>
-                </body>
-                </html>
+            return f"""
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="error">
+                System under maintainance
+                </div>
+            </template>
             """
     finally:
         if "db" in locals(): db.close()
@@ -257,7 +273,7 @@ def _():
         return email
         
     except Exception as ex:
-        print(ex)
+        ic(ex)
         return f"""
 
             <template mix-target="#message">
@@ -281,7 +297,7 @@ def _():
         x.reset_password_email("ssimone12@gmail.com", user_email, user["user_pk"])
         return f"{user}"
     except Exception as ex:
-        print(ex, "reset password email not sent")
+        ic(ex, "reset password email not sent")
     finally:
         if "db" in locals(): db.close()
 
@@ -291,7 +307,7 @@ def _(id):
     try:
         return template("update_password.html", id=id)
     except Exception as ex:
-        print(ex)
+        ic(ex)
 
     finally:
        pass
@@ -312,11 +328,11 @@ def _(id):
         # # Hashing the password
         hashed = bcrypt.hashpw(password, salt)
         
-        print("Salt :")
-        print(salt)
+        ic("Salt :")
+        ic(salt)
         
-        print("Hashed")
-        print(hashed)    
+        ic("Hashed")
+        ic(hashed)    
 
         db = x.db()
         q = db.execute("UPDATE users SET user_password = ?, user_updated_at = ? WHERE user_pk = ?", ( hashed, updated_at,id))
@@ -354,7 +370,7 @@ def _(id):
            
     except Exception as ex:
         try:
-            print(ex)
+            ic(ex)
             response.status = ex.args[1]
             return f"""
             <template mix-target="#toast">
@@ -364,7 +380,7 @@ def _(id):
             </template>
             """
         except Exception as ex:
-            print(ex)
+            ic(ex)
             response.status = 500
             return f"""
             <template mix-target="#toast">
@@ -406,7 +422,7 @@ def _():
         redirect(request.url)
 
     except Exception as ex:    
-        print(ex)
+        ic(ex)
     finally:
         if "db" in locals(): db.close()
 
@@ -419,7 +435,7 @@ def _():
        
         return template("delete_user.html")
     except Exception as ex:
-        print(ex)
+        ic(ex)
         response.status = 303 
         response.set_header('Location', '/login')
     finally:
@@ -460,7 +476,7 @@ def _():
 
             """
     except Exception as ex:
-        print(ex)
+        ic(ex)
         response.status = 303 
         response.set_header('Location', '/login')
     finally:

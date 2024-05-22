@@ -25,8 +25,8 @@ def db():
         db.row_factory = dict_factory  # Gets JSON objects
         return db
     except Exception as ex:
-        print("XXXXXXXXXXXXXXXXXX db function has an error  XXXXXXXXXXXXXXXXXXXXXXXXXX")
-        print(ex)
+        ic("XXXXXXXXXXXXXXXXXX db function has an error  XXXXXXXXXXXXXXXXXXXXXXXXXX")
+        ic(ex)
     finally:
         pass
 
@@ -149,7 +149,7 @@ def send_email_verification(to_email, from_email, verification_id):
             response.status = 200
             return "Signup email sent successfully!"
     except Exception as ex:
-            print(ex)
+            ic(ex)
             response.status = 500
             return "Error sending signup email."
     finally:
@@ -254,7 +254,7 @@ def send_profile_deleted_email(to_email, from_email):
  
         server.quit()
     except Exception as ex:
-        print(ex)
+        ic(ex)
         return "error"
 
 
