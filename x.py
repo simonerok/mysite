@@ -60,7 +60,7 @@ USER_USERNAME_MAX = 20
 USER_USERNAME_REGEX = "^[a-zA-Z]{2,20}$"
 
 def validate_user_username():
-    error = f"username {USER_USERNAME_MIN} to {USER_USERNAME_MAX} lowercase english letters"
+    error = f"username {USER_USERNAME_MIN} to {USER_USERNAME_MAX} characters"
     user_username = request.forms.get("user_username", "").strip()
     if not re.match(USER_USERNAME_REGEX, user_username): raise Exception(error, 400)
     return user_username
@@ -81,6 +81,7 @@ def validate_user_first_name():
 
 LAST_NAME_MIN = 2
 LAST_NAME_MAX = 20
+
 
 
 def validate_user_last_name():
@@ -158,11 +159,10 @@ def send_email_verification(to_email, from_email, verification_id):
 ############# RESET PASSWORD #################
 def reset_password_email(to_email, from_email, verification_id):
     try:
-
         message = MIMEMultipart()
         message["To"] = to_email
         message["From"] = from_email
-        message["Subject"] = 'Reset password'
+        message["Subject"] = 'Reset password email'
     
         email_body= f""" 
 
@@ -202,14 +202,61 @@ def reset_password_email(to_email, from_email, verification_id):
  
         server.quit()
         response.status = 200
-        return "email reset password sent successfully!"
+        return ic("email reset password sent successfully!")  
     except Exception as ex:
-            print(ex)
-            response.status = 500
-            return "Error sending reset password email."
-    finally:
-            pass  
+        ic(ex)  
+        response.status = 500
+        return ic("Error sending reset password email.")
+      
+
+
+############# EMAIL PROFILE DELETED #################
+def send_profile_deleted_email(to_email, from_email):
+    try:
+        message = MIMEMultipart()
+        message["To"] = to_email
+        message["From"] = from_email
+        message["Subject"] = 'Profile deleted'
     
+        email_body= f""" 
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8" />
+                            <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1.0"
+                            />
+                            <title>Delete profile</title>
+                        </head>
+                        <body>
+                            <h1>Your profile has been deleted</h1>
+                           
+                        </body>
+                        </html>
+
+             """
+ 
+        messageText = MIMEText(email_body, 'html')
+        message.attach(messageText)
+ 
+        email = from_email
+        password = 'usfkdsdexmqjvbdb'
+ 
+        server = smtplib.SMTP('smtp.gmail.com:587')
+        server.ehlo('Gmail')
+        server.starttls()
+        server.login(email,password)
+        from_email = from_email
+        to_email  = to_email
+        server.sendmail(from_email,to_email,message.as_string())
+ 
+        server.quit()
+    except Exception as ex:
+        print(ex)
+        return "error"
+
 
 ############# CHECK IF USER IS LOGGED IN #################
 def validate_user_logged():

@@ -4,7 +4,7 @@
 # https://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@github.com/simonerok/mysite.git
 
 #########################
-from bottle import default_app, get, post, run, template, static_file, response, request, redirect, HTTPResponse
+from bottle import default_app, get, post, run, template, static_file, response, request, redirect, HTTPResponse, put
 import git
 import os
 import x
@@ -79,6 +79,13 @@ def _():
         return template("forgot_password.html")
  
 ##############################
+@get("/not_verified")
+def _():
+   return template("not_verified.html")
+
+
+
+##############################
 @get("/profile")
 def _():
     try:
@@ -106,10 +113,6 @@ def _():
         response.set_header('Location', '/login')
         return
 
-##############################
-@get("/not_verified")
-def _():
-   return template("not_verified.html")
 
 
 
@@ -124,6 +127,7 @@ def _():
         q = db.execute("SELECT * FROM users WHERE user_email = ?", (user_email,))
         user = q.fetchone()
         if(user):
+            ic(user_password, user["user_password"])
             if not bcrypt.checkpw(user_password.encode(), user["user_password"]): raise Exception("Invalid credentials", 400)
             if(user['user_is_verified'] == 1):
                 response.set_cookie("user", user["user_pk"], secret="my_secret_cookie", httponly=True, secure=x.is_cookie_https())
@@ -281,17 +285,186 @@ def _():
     finally:
         if "db" in locals(): db.close()
 
-############ CHANGE PASSWORD ##################
+##############################
 @get("/update-password/<id>")
 def _(id):
     try:
-
         return template("update_password.html", id=id)
     except Exception as ex:
         print(ex)
 
     finally:
+       pass
+
+############ CHANGE PASSWORD ##################
+@put("/update-password/<id>")
+def _(id):
+    try:
+        
+        user_password = x.validate_password()
+        updated_at = int(time.time())
+
+        # this makes user_password into a byte string
+        password = user_password.encode() 
+    
+        # Adding the salt to password
+        salt = bcrypt.gensalt()
+        # # Hashing the password
+        hashed = bcrypt.hashpw(password, salt)
+        
+        print("Salt :")
+        print(salt)
+        
+        print("Hashed")
+        print(hashed)    
+
+        db = x.db()
+        q = db.execute("UPDATE users SET user_password = ?, user_updated_at = ? WHERE user_pk = ?", ( hashed, updated_at,id))
+        db.commit()    
+
+
+        get_user_query = db.execute("SELECT * FROM users WHERE user_pk = ?", (id,))   
+        user = get_user_query.fetchone()
+
+        user_first_name = user["user_first_name"]
+        
+        return f"""
+        
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Password Update</title>
+            <style>
+                .text-2xl {{ font-size: 2em; }}
+                .font-bold {{ font-weight: bold; }}
+                .text-blue-600 {{ color: #3182ce; }}
+                .underline {{ text-decoration: underline; }}
+            </style>
+        </head>
+        <body>
+            <div>
+                <h1 class="text-2xl font-bold">{user_first_name}</h1>
+                <p>The password has been changed</p>
+                <a class="text-blue-600 underline" href="/login">Go to login</a>
+            </div>
+        </body>
+        </html>
+        
+        """
+           
+    except Exception as ex:
+        try:
+            print(ex)
+            response.status = ex.args[1]
+            return f"""
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="error">
+                    {ex.args[0]}
+                </div>
+            </template>
+            """
+        except Exception as ex:
+            print(ex)
+            response.status = 500
+            return f"""
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="error">
+                   System under maintainance
+                </div>
+            </template>
+            """
+    finally:
         pass
+
+
+########### EDIT USER ###################
+@put("/update-user")
+def _():
+    try:
+        user = x.validate_user_logged()
+        user_email = x.validate_email()
+        user_username = x.validate_user_username()
+        user_first_name = x.validate_user_first_name()
+        user_last_name = x.validate_user_last_name()
+        user_updated_at = int(time.time())
+
+        db = x.db()
+        q = db.execute("UPDATE users SET user_email =?, user_username = ?, user_first_name = ?, user_last_name = ?, user_updated_at = ? WHERE user_pk = ?", ( user_email,user_username, user_first_name, user_last_name, user_updated_at, user["user_pk"]))
+        db.commit()        
+
+        updated_user = {**user, "user_email": user_email, "user_username": user_username, "user_first_name": user_first_name, "user_last_name": user_last_name, "user_updated_at": user_updated_at}
+
+        ic("############### updated_user: ", updated_user)
+        ic(updated_user)
+
+        try:
+            is_cookie_https = True
+        except:
+            is_cookie_https = False        
+        response.set_cookie("user", updated_user, secret=x.is_cookie_https, httponly=True, secure=is_cookie_https)
+
+        redirect(request.url)
+
+    except Exception as ex:    
+        print(ex)
+    finally:
+        if "db" in locals(): db.close()
+
+
+############# DELETE USER #################
+@get("/delete-user")
+def _():
+    try:
+        user = x.validate_user_logged()
+       
+        return template("delete_user.html")
+    except Exception as ex:
+        print(ex)
+        response.status = 303 
+        response.set_header('Location', '/login')
+    finally:
+        pass
+
+##############################    
+@post("/delete-user")
+def _():
+    try:
+        user = x.validate_user_logged()
+        user_password = x.validate_password()
+
+        db = x.db()
+        q = db.execute("SELECT * FROM users WHERE user_email = ? LIMIT 1", (user['user_email'],))
+        logged_user = q.fetchone()
+        
+        ic(f"######################## user_password: {user_password}")
+        ic(f"######################## logged_user_password: {logged_user['user_password']}")
+
+
+        try:
+            if not  bcrypt.checkpw(user_password.encode(), logged_user["user_password"].encode()): raise Exception("Invalid credentials", 400)
+        except Exception as ex:
+            if not  bcrypt.checkpw(user_password.encode(), logged_user["user_password"]): raise Exception("Invalid credentials", 400)
+       
+      
+        db.execute("UPDATE users SET user_deleted_at = ? WHERE user_pk = ?", (int(time.time()), user["user_pk"]))
+        db.commit()
+
+        x.send_profile_deleted_email("ssimone12@gmail.com", logged_user['user_email'])
+
+        response.delete_cookie("user")
+
+        return """
+                <template mix-target="#form_confirm_delete_user" mix-replace>
+                    <h1>Your profile has been deleted</h1>
+                </template>
+
+            """
+    except Exception as ex:
+        print(ex)
+        response.status = 303 
+        response.set_header('Location', '/login')
+    finally:
+        if "db" in locals(): db.close()        
 
 ##############################
 #function to run the app and check if it is running on pythonanywhere or local
