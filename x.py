@@ -9,6 +9,8 @@ from email.mime.multipart import MIMEMultipart
 from icecream import ic 
 
 
+ITEMS_PER_PAGE = 10
+
 ############# FUNCTION TO MAKE DATABSE CODE INTO JSON OBJECT #################
 def dict_factory(cursor, row):
     col_names = [col[0] for col in cursor.description]
@@ -207,8 +209,53 @@ def reset_password_email(to_email, from_email, verification_id):
         ic(ex)  
         response.status = 500
         return ic("Error sending reset password email.")
-      
+    
+############# EMAIL PROFILE UPDATED #################
+def send_profile_updated_email(to_email, from_email):
+    try:
+        message = MIMEMultipart()
+        message["To"] = to_email
+        message["From"] = from_email
+        message["Subject"] = 'Profile updated'
+    
+        email_body= f""" 
 
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8" />
+                            <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1.0"
+                            />
+                            <title>Updated profile</title>
+                        </head>
+                        <body>
+                            <h1>Your profile has been updated!</h1>
+                        </body>
+                        </html>
+
+             """
+ 
+        messageText = MIMEText(email_body, 'html')
+        message.attach(messageText)
+ 
+        email = from_email
+        password = 'usfkdsdexmqjvbdb'
+ 
+        server = smtplib.SMTP('smtp.gmail.com:587')
+        server.ehlo('Gmail')
+        server.starttls()
+        server.login(email,password)
+        from_email = from_email
+        to_email  = to_email
+        server.sendmail(from_email,to_email,message.as_string())
+ 
+        server.quit()
+    except Exception as ex:
+        ic(ex)
+        return "error"
+      
 
 ############# EMAIL PROFILE DELETED #################
 def send_profile_deleted_email(to_email, from_email):
@@ -271,6 +318,10 @@ def no_cache():
     response.add_header("Pragma", "no-cache")
     response.add_header("Expires", 0)   
     
+
+############# IMAGES #################    
+
+
 
 
 ############# IS COOKIE HTTPS #################

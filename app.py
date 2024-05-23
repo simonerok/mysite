@@ -43,14 +43,24 @@ def _():
 ##############################
 @get("/")
 def _():
-    user_cookie = request.get_cookie("user", secret='my_secret_cookie')
+    try:
+        db = x.db()
+        q = db.execute("SELECT * FROM items ORDER BY item_created_at LIMIT 0, ?", (x.ITEMS_PER_PAGE,))
+        items = q.fetchall()
+        ic(items)
+        is_logged = False
+        try:    
+            x.validate_user_logged()
+            is_logged = True
+        except:
+            pass
 
-    if user_cookie:
-        ic("logged in")
-    else:
-        ic("not logged in")
-
-    return template("index.html")
+        return template("index.html", items=items, is_logged=is_logged)
+    except Exception as ex:
+        ic(ex)
+        return ex
+    finally:
+        if "db" in locals(): db.close()
 
 ##############################
 @get("/signup")
@@ -90,6 +100,10 @@ def _():
 def _():
    return template("not_verified.html")
 
+##############################
+@get("/images/<item_image>")
+def _(item_image):
+    return static_file(item_image, "images")
 
 
 ##############################
@@ -396,21 +410,25 @@ def _(id):
 ########### EDIT USER ###################
 @put("/update-user")
 def _():
+    updated_user = None
     try:
-        user = x.validate_user_logged()
+        user_pk = x.validate_user_logged()
         user_email = x.validate_email()
         user_username = x.validate_user_username()
         user_first_name = x.validate_user_first_name()
         user_last_name = x.validate_user_last_name()
         user_updated_at = int(time.time())
+        ic("############### trying to connect: ", user_email)
 
         db = x.db()
-        q = db.execute("UPDATE users SET user_email =?, user_username = ?, user_first_name = ?, user_last_name = ?, user_updated_at = ? WHERE user_pk = ?", ( user_email,user_username, user_first_name, user_last_name, user_updated_at, user["user_pk"]))
+        db.execute("UPDATE users SET user_email = ?, user_username = ?, user_first_name = ?, user_last_name = ?, user_updated_at = ? WHERE user_pk = ?", ( user_email, user_username, user_first_name, user_last_name, user_updated_at, user_pk))
         db.commit()        
+        ic("############### hej mpr: ")
 
-        updated_user = {**user, "user_email": user_email, "user_username": user_username, "user_first_name": user_first_name, "user_last_name": user_last_name, "user_updated_at": user_updated_at}
+        #updated_user = {**user, "user_email": user_email, "user_username": user_username, "user_first_name": user_first_name, "user_last_name": user_last_name, "user_updated_at": user_updated_at}
+        updated_user = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,)).fetchone()
 
-        ic("############### updated_user: ", updated_user)
+        ic("############### updated_user: ")
         ic(updated_user)
 
         try:
@@ -418,13 +436,19 @@ def _():
         except:
             is_cookie_https = False        
         response.set_cookie("user", updated_user, secret=x.is_cookie_https, httponly=True, secure=is_cookie_https)
-
-        redirect(request.url)
-
     except Exception as ex:    
         ic(ex)
     finally:
         if "db" in locals(): db.close()
+        try:
+            if (updated_user != None):
+                x.send_profile_updated_email(user_email, "ssimone12@gmail.com")
+                return """
+                <template mix-redirect="/profile">
+                </template>
+                """
+        except HTTPResponse:
+            raise
 
 
 ############# DELETE USER #################
