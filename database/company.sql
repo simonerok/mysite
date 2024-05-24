@@ -40,7 +40,7 @@ INSERT INTO users VALUES(
 SELECT * FROM users;
 
 /* used for developing */
-UPDATE users SET user_role = "admin" WHERE user_username = "AdminSofia";
+UPDATE users SET user_role = "admin" WHERE user_username = "adminSofia";
 UPDATE users SET user_email = "ssimone12@gmail.com" WHERE user_username = "AdminSofia";
 DELETE FROM users WHERE user_email = 'sofi78a4@stud.kea.dk';
 

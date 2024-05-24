@@ -115,18 +115,27 @@ def _():
         user_pk = request.get_cookie("user", secret="my_secret_cookie")
         db = x.db()
 
-        # Fetch the user from the database
+        # Fetch the single user from the database
         user = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,)).fetchone()
 
         if user is None:
             raise Exception("No user found with the provided primary key")
 
+        # Fetch all users from the database
+        all_users = db.execute("SELECT * FROM users").fetchall()
+
         if user['user_role'] == 'partner':
-            profile_template = template("profile_partner.html", is_logged=True, user=user)
+            q = db.execute("""SELECT * FROM items_images 
+                           INNER JOIN items ON items_images.item_fk  = items.item_pk 
+                           WHERE item_owner_fk = ? 
+                           ORDER BY item_created_at """, 
+                           (user['user_pk'],))
+            rows = q.fetchall()
+            profile_template = template("profile_partner.html", is_logged=True, user=user, users=all_users, items=rows)
         elif user['user_role'] == 'admin':
-            profile_template = template("profile_admin.html", is_logged=True, user=user)
+            profile_template = template("profile_admin.html", is_logged=True, user=user, users=all_users)
         else:
-            profile_template = template("profile_customer.html", is_logged=True, user=user)
+            profile_template = template("profile_customer.html", is_logged=True, user=user, users=all_users)
 
         return profile_template
     except Exception as ex:
@@ -146,6 +155,7 @@ def _():
         db = x.db()
         q = db.execute("SELECT * FROM users WHERE user_email = ?", (user_email,))
         user = q.fetchone()
+        
         if(user):
             if not bcrypt.checkpw(user_password.encode(), user["user_password"]): raise Exception("Invalid credentials, try again", 400)
             if(user['user_is_verified'] == 1):

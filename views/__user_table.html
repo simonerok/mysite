@@ -1,0 +1,34 @@
+<div id="items" class="flex flex-col mt-8 verflow-x-auto">
+
+    <table class="min-w-full divide-y divide-gray-200 ml-4">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated at</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Block user</th>
+            </tr>
+        </thead>
+
+        <tbody class="bg-white divide-y divide-gray-200">
+            % for user in users:
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">{{user["user_first_name"]}}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">{{user["user_last_name"]}}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">{{user["user_email"]}}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">{{user["user_role"]}}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">{{user["user_updated_at"]}}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <form id="{{user['user_pk']}}">
+                            <input name="user_id" type="text" value="{{user['user_pk']}}" class="hidden">
+                        </form>
+                    </td>
+                </tr>
+            % end
+        </tbody>
+
+    </table>
+
+</div>

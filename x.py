@@ -104,6 +104,8 @@ def validate_user_role():
     return user_role
 
 
+
+
 ################# EMAIL VERIFICATION ############################
 def send_email_verification(to_email, from_email, verification_id):
     try:
@@ -305,12 +307,35 @@ def send_profile_deleted_email(to_email, from_email):
         return "error"
 
 
-############# CHECK IF USER IS LOGGED IN #################
+############# CHECK IF USER IS LOGGED IN (checks for cookie named user) #################
 def validate_user_logged():
     user = request.get_cookie("user", secret='my_secret_cookie')
     if user is None:
         raise Exception("user must login", 400)
     return user
+
+############# VALIDATE USER IS LOGGED IN (cheks for cookie named id while also prevent cashing) #################    
+def validate_logged():
+    # Prevent logged pages from caching
+    response.add_header("Cache-Control", "no-cache, no-store, must-revalidate")
+    response.add_header("Pragma", "no-cache")
+    response.add_header("Expires", "0")  
+    user_id = request.get_cookie("id", secret ='my_secret_cookie')
+    if not user_id: raise Exception("XXXXXXXXXXX user not logged XXXXXXXXX", 400)
+    return user_id
+
+
+############### VALIDATE USER ID ##########################
+
+USER_ID_LEN = 32
+USER_ID_REGEX = "^[a-f0-9]{32}$"
+
+def validate_user_id():
+	error = f"user_id invalid"
+	user_id = request.forms.get("user_id", "").strip()      
+	if not re.match(USER_ID_REGEX, user_id): raise Exception(error, 400)
+	return user_id
+
 
 ############# NO CASCHE - prevent browser from rembering login #################
 def no_cache():
@@ -318,10 +343,6 @@ def no_cache():
     response.add_header("Pragma", "no-cache")
     response.add_header("Expires", 0)   
     
-
-############# IMAGES #################    
-
-
 
 
 ############# IS COOKIE HTTPS #################

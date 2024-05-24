@@ -1,0 +1,15 @@
+%import x
+%include("_header.html")
+
+<main class="flex flex-col items-center h-full justify-center">
+   
+% for user in users:
+    %include("_user")
+% end
+
+
+<button mix-delete="/delete-all-but-admin">Delete all users but admin</button>
+   
+</main>
+
+%include("_footer.html")
