@@ -16,6 +16,7 @@ import smtplib
 from icecream import ic
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import credentials
 
 
 
@@ -55,7 +56,7 @@ def _():
         except:
             pass
 
-        return template("index.html", items=items, is_logged=is_logged)
+        return template("index.html", items=items, is_logged=is_logged, mapbox_token=credentials.mapbox_token)
     except Exception as ex:
         ic(ex)
         return ex
