@@ -17,8 +17,8 @@ from icecream import ic
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import credentials
-
-
+import json
+import sqlite3
 
 
 ############# CONNECT TO PYTHONANYWHERE #################
@@ -46,7 +46,8 @@ def _():
 def _():
     try:
         db = x.db()
-        q = db.execute("SELECT * FROM items ORDER BY item_created_at LIMIT 0, ?", (x.ITEMS_PER_PAGE,))
+        # show newest items first = DESC
+        q = db.execute("SELECT * FROM items ORDER BY item_created_at DESC LIMIT 0, ?", (x.ITEMS_PER_PAGE,))
         items = q.fetchall()
         ic(items)
         is_logged = False
@@ -106,79 +107,70 @@ def _():
 def _(item_image):
     return static_file(item_image, "images")
 
+##############################
+@get("/<file_name>.js")
+def _(file_name):
+    return static_file(file_name+".js", ".")
+
+
 
 ##############################
-@get("/profile")
-def _():
+
+@get("/profile/restore/<user_pk>")
+def _(user_pk):
     try:
-        x.no_cache()
-        user_pk = request.get_cookie("user", secret="my_secret_cookie")
         db = x.db()
-
-        # Fetch the single user from the database
-        user = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,)).fetchone()
-
-        if user is None:
-            raise Exception("No user found with the provided primary key")
-
-        # Fetch all users from the database
-        all_users = db.execute("SELECT * FROM users").fetchall()
-
-        if user['user_role'] == 'partner':
-            q = db.execute("""SELECT * FROM items_images 
-                           INNER JOIN items ON items_images.item_fk  = items.item_pk 
-                           WHERE item_owner_fk = ? 
-                           ORDER BY item_created_at """, 
-                           (user['user_pk'],))
-            rows = q.fetchall()
-            profile_template = template("profile_partner.html", is_logged=True, user=user, users=all_users, items=rows)
-        elif user['user_role'] == 'admin':
-            profile_template = template("profile_admin.html", is_logged=True, user=user, users=all_users)
-        else:
-            profile_template = template("profile_customer.html", is_logged=True, user=user, users=all_users)
-
-        return profile_template
+        db.execute("UPDATE users SET user_deleted_at = 0 WHERE user_pk = ?", (user_pk,))
+        db.commit()
+        redirect("/login")
+    except HTTPResponse:
+        raise
     except Exception as ex:
         ic(ex)
-        response.status = 303 
-        response.set_header('Location', '/login')
-        return
+    finally:
+        if "db" in locals():
+            db.close()
 
-
-
-
+##############################
 @post("/login")
 def _():
     try:    
         user_email = x.validate_email()
         user_password = x.validate_password()
         db = x.db()
-        q = db.execute("SELECT * FROM users WHERE user_email = ?", (user_email,))
+        q = db.execute("SELECT * FROM users WHERE user_email = ? LIMIT 1", (user_email,))
         user = q.fetchone()
+        if not user: raise Exception("user not found", 400)
+        ic("user: ", user)
         
-        if(user):
-            if not bcrypt.checkpw(user_password.encode(), user["user_password"]): raise Exception("Invalid credentials, try again", 400)
-            if(user['user_is_verified'] == 1):
-                response.set_cookie("user", user["user_pk"], secret="my_secret_cookie", httponly=True, secure=x.is_cookie_https())
-                # Instead of redirecting, return a string that contains the HTML templates
+        
+        # check user
+        if user:
+            if not bcrypt.checkpw(user_password.encode(), user["user_password"]): raise Exception("Invalid credentials", 400)
+            if user["user_is_verified"] != 1:
+                return template("not_verified.html")
+            if user["user_deleted_at"] != 0: 
                 return f"""
-                <template mix-target="main" mix-replace>
-                    template{"__form_login.html"}
-                </template>
-                <template mix-redirect="/profile">
-                </template>
+                    <template mix-target="main">
+                        <div>
+                            <h2>This profile has been previously deleted</h2>
+                            <a href="/profile/restore/{user['user_pk']}">Click here to restore it!</a>
+                        </div>
+                    </template>
                 """
             else:
-                return f"""
-                <template mix-target="main" mix-replace>
-                    template{"not_verified.html"}
-                </template>
-                <template mix-redirect="/profile">
-                </template>
+                user.pop("user_password") # Do not put the user's password in the cookie
+                ic(user)
+
+                # Set the user cookie
+                response.set_cookie("user", user["user_pk"], secret="my_secret_cookie", secure=x.is_cookie_https)
+                return """
+                    <template mix-redirect="/profile">
+                    </template>
                 """
     except Exception as ex:
         try:
-            ic(ex)
+            print(ex)
             response.status = ex.args[1]
             return f"""
             <template mix-target="#toast">
@@ -188,7 +180,7 @@ def _():
             </template>
             """
         except Exception as ex:
-            ic(ex)
+            print(ex)
             response.status = 500
             return f"""
             <template mix-target="#toast">
@@ -201,6 +193,33 @@ def _():
         if "db" in locals(): db.close()
 
 
+###"###################################################
+@get("/profile")
+def _():
+    try:
+        x.no_cache()
+        user_pk = request.get_cookie("user", secret="my_secret_cookie")
+        db = x.db()
+        # Fetch the single user from the db
+        user = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,)).fetchone()
+        if user is None:
+            raise Exception("No user found with the provided primary key")
+        # Fetch all users from the database
+        all_users = db.execute("SELECT * FROM users").fetchall()
+        
+        if user['user_role'] == 'partner':
+            return template("profile_partner.html", is_logged=True, user=user, role=user['user_role'])
+        elif user['user_role'] == 'admin':
+            return template("profile_admin.html", is_logged=True, user=user, users=all_users, role=user['user_role'])
+        else:
+            return template("profile_customer.html", is_logged=True, user=user, role=user['user_role'])
+    except Exception as ex:
+        ic(ex)
+        response.status = 303 
+        response.set_header('Location', '/login')
+        return
+    
+##############################
 
 @post("/signup")
 def _():
@@ -429,37 +448,44 @@ def _():
         user_first_name = x.validate_user_first_name()
         user_last_name = x.validate_user_last_name()
         user_updated_at = int(time.time())
-        ic("############### trying to connect: ", user_email)
 
         db = x.db()
         db.execute("UPDATE users SET user_email = ?, user_username = ?, user_first_name = ?, user_last_name = ?, user_updated_at = ? WHERE user_pk = ?", ( user_email, user_username, user_first_name, user_last_name, user_updated_at, user_pk))
         db.commit()        
-        ic("############### hej mpr: ")
 
-        #updated_user = {**user, "user_email": user_email, "user_username": user_username, "user_first_name": user_first_name, "user_last_name": user_last_name, "user_updated_at": user_updated_at}
         updated_user = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,)).fetchone()
 
-        ic("############### updated_user: ")
         ic(updated_user)
 
+        #sending a cookie named user with the updated user and securing that it is only accesable by the server and not javascript/client side
         try:
             is_cookie_https = True
-        except:
-            is_cookie_https = False        
-        response.set_cookie("user", updated_user, secret=x.is_cookie_https, httponly=True, secure=is_cookie_https)
-    except Exception as ex:    
-        ic(ex)
+            response.set_cookie("user", str(updated_user['user_pk']), secret="my_secret_cookie", httponly=True, secure=is_cookie_https)
+        except Exception as ex:    
+            ic(ex)
     finally:
         if "db" in locals(): db.close()
         try:
+            # script is for the trouble with showing the toast and redirecting to profile
             if (updated_user != None):
                 x.send_profile_updated_email(user_email, "ssimone12@gmail.com")
                 return """
-                <template mix-redirect="/profile">
+                <template mix-target="#toast">
+                    <div mix-ttl="3000" class="ok">
+                        Your profile has been updated.
+                    </div>
                 </template>
+                
+                <script>
+                    setTimeout(function() {
+                        window.location.href = "/profile";
+                    }, 3000);
+                </script>
                 """
         except HTTPResponse:
             raise
+
+
 
 
 ############# DELETE USER #################
@@ -477,45 +503,246 @@ def _():
         pass
 
 ##############################    
-@post("/delete-user")
+@put("/delete-user")
 def _():
+    user_deleted = None
     try:
-        user = x.validate_user_logged()
+        user_pk = x.validate_user_logged()
         user_password = x.validate_password()
 
+        ic(user_pk)
+
+        # delete user funciton
         db = x.db()
-        q = db.execute("SELECT * FROM users WHERE user_email = ? LIMIT 1", (user['user_email'],))
+        q = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,))
         logged_user = q.fetchone()
-        
-        ic(f"######################## user_password: {user_password}")
-        ic(f"######################## logged_user_password: {logged_user['user_password']}")
+        db.commit() 
+        ic(logged_user) 
 
-
-        try:
-            if not  bcrypt.checkpw(user_password.encode(), logged_user["user_password"].encode()): raise Exception("Invalid credentials", 400)
-        except Exception as ex:
-            if not  bcrypt.checkpw(user_password.encode(), logged_user["user_password"]): raise Exception("Invalid credentials", 400)
-       
-      
-        db.execute("UPDATE users SET user_deleted_at = ? WHERE user_pk = ?", (int(time.time()), user["user_pk"]))
+        if not bcrypt.checkpw(user_password.encode(), logged_user["user_password"]): raise Exception("Invalid credentials", 400)
+    
+        #set user_deleted_at to the current time
+        db.execute("UPDATE users SET user_deleted_at = ? WHERE user_pk = ?", (int(time.time()), user_pk))
         db.commit()
-
-        x.send_profile_deleted_email("ssimone12@gmail.com", logged_user['user_email'])
 
         response.delete_cookie("user")
 
-        return """
-                <template mix-target="#form_confirm_delete_user" mix-replace>
-                    <h1>Your profile has been deleted</h1>
-                </template>
+        user_deleted = True
 
+        if (user_deleted == True):
+            x.send_profile_deleted_email(logged_user['user_email'], "ssimone12@gmail.com")
+            return """
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="ok">
+                    Your profile has been deleted.
+                </div>
+            </template>
+            <template mix-redirect="/login"></template>
             """
     except Exception as ex:
         ic(ex)
-        response.status = 303 
-        response.set_header('Location', '/login')
+        return f"""
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="error">
+                    {ex} Try again.
+                </div>
+            </template>
+        """
+
     finally:
-        if "db" in locals(): db.close()        
+        if "db" in locals(): db.close()
+
+############# CREATE PROPERTY #################
+@post("/create_property")
+def _():
+    try:
+        item_pk = uuid.uuid4().hex
+        item_name = x.validate_item_name()
+        item_lat = random.uniform(55.600, 55.700)
+        item_lon = random.uniform(12.400, 12.600)
+        item_stars = 5
+        item_price_per_night  = x.validate_item_price()
+        item_created_at = int(time.time())
+        item_updated_at = 0
+        item_owner_fk = "55ad74495a114c28b80fd73be024aadd"
+        item_blocked_at = 0
+
+        db = x.db()
+
+        # Images
+        item_images = x.validate_item_images()
+        print("##### this is images ##########")
+        print(item_images)
+       
+
+        if item_images:
+                # Process each image, rename it, save it, and store just the filename in the database
+            for index, image in enumerate(item_images, start=1):
+                image_pk =  uuid.uuid4().hex
+                image_created_at = int(time.time())
+                filename = f"{item_pk}_{index}.{image.filename.split('.')[-1]}"
+                path = f"images/{filename}"
+                image.save(path)  # Save the image with the new filename
+
+                # Insert the image filename into the item_images table (without path)
+                db.execute("INSERT INTO items_images (image_pk,image_url,item_fk, image_created_at) VALUES (?,?, ?,?)", (image_pk,filename,item_pk, image_created_at))
+                db.commit()
+
+                ic("##############***********w**'##################")
+                ic(item_images)
+                q = db.execute("INSERT INTO items (item_pk, item_name, item_lat, item_lon, item_stars, item_price_per_night, item_created_at, item_updated_at, item_owner_fk, item_blocked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)", 
+                    (item_pk, item_name, item_lat, item_lon, item_stars, item_price_per_night, item_created_at, item_updated_at, item_owner_fk, item_blocked_at))
+                db.commit()
+            
+                return """
+                    <template mix-redirect="/profile">
+
+                    </template>
+                """
+    except Exception as ex:
+        ic("########################### create property exception print:")
+        try:
+            ic(ex)
+            response.status = ex.args[1]
+            return f"""
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="error">
+                    {ex.args[0]}
+                </div>
+            </template>
+            """
+        except Exception as ex:
+            ic(ex)
+            response.status = 500
+            return f"""
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="error">
+                   System under maintainance
+                </div>
+            </template>
+            """
+    finally:
+        if "db" in locals(): db.close()
+
+    
+    
+
+###½########## MORE ITEMS ##################
+@get("/items/page/<page_number>")
+def _(page_number):
+    try:
+        db = x.db()
+        next_page = int(page_number) + 1
+        offset = (int(page_number) - 1) * x.ITEMS_PER_PAGE
+        q = db.execute(f"""     SELECT * FROM items 
+                                ORDER BY item_created_at 
+                                LIMIT ? OFFSET {offset}
+                        """, (x.ITEMS_PER_PAGE,))
+        items = q.fetchall()
+        ic(items)
+
+        is_logged = False
+        try:
+            x.validate_user_logged()
+            is_logged = True
+        except:
+            pass
+
+        html = ""
+        for item in items: 
+            html += template("_item", item=item, is_logged=is_logged)
+        btn_more = template("__btn_more", page_number=next_page)
+        if len(items) < x.ITEMS_PER_PAGE: 
+            btn_more = ""
+        return f"""
+        <template mix-target="#items" mix-bottom>
+            {html}
+        </template>
+        <template mix-target="#more" mix-replace>
+            {btn_more}
+        </template>
+        <template mix-function="test">{json.dumps(items)}</template>
+        """
+    except Exception as ex:
+        ic(ex)
+        return "ups..."
+    finally:
+        if "db" in locals(): db.close() 
+       
+
+############# BLOCK PROPERTIES #################
+@post("/toggle_item_block")
+def _():
+    try:
+       item_id = request.forms.get("item_id", "").strip() 
+       user = x.validate_user_logged()
+       x.Validate_is_admin(user, item_id)
+       item_blocked_at = int(time.time())
+      
+
+       db = x.db()
+       q = db.execute("UPDATE items SET item_blocked_at = ? WHERE item_pk = ?",(item_blocked_at, item_id))
+       db.commit()
+
+       x.send_item_blocked_unblocked_email("ssimone12@gmail.com", item_id)
+
+       return f"""
+        <template mix-target="[id='{item_id}']" mix-replace>
+
+            <form id="{item_id}">
+
+            <input name="item_id" type="text" value="{item_id}" class="hidden">
+             <button
+            mix-data="[id='{item_id}']"
+            mix-post="/toggle_item_unblock"
+             >
+            Unblock
+        </button>
+
+        </form>
+        </template>
+        """
+    except Exception as ex:
+        pass
+    finally:
+        if "db" in locals(): db.close()    
+
+
+############ UNBLOCK ITEM ##################
+@post("/toggle_item_unblock")
+def _():
+    try:
+       item_id = request.forms.get("item_id", "").strip() 
+       user = x.validate_user_logged()
+       x.Validate_is_admin(user, item_id)
+       item_blocked_at = 0
+       ic(item_blocked_at, "item block clicked")
+
+       db = x.db()
+       q = db.execute("UPDATE items SET item_blocked_at = ? WHERE item_pk = ?",(item_blocked_at, item_id))
+       db.commit()
+
+       x.send_item_blocked_unblocked_email("ssimone12@gmail.com", item_id)
+       return f"""
+        <template mix-target="[id='{item_id}']" mix-replace>
+
+         <form id="{item_id}">
+            <input name="item_id" type="text" value="{item_id}" class="hidden">
+        <button
+            mix-data="[id='{item_id}']"
+            mix-post="/toggle_item_block"
+        >
+           Block
+        </button>
+         </form>
+        </template>
+        """
+    except Exception as ex:
+        ic(ex)
+        pass
+    finally:
+        if "db" in locals(): db.close()    
+
 
 ##############################
 #function to run the app and check if it is running on pythonanywhere or local

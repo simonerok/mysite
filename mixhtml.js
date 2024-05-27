@@ -3,7 +3,7 @@ function cl(text){console.log(text)}
 try{
     history.replaceState({"mixonurl":mix_replace_url}, "title", mix_replace_url)
 }catch(err){
-    
+    cl(`Single Page App not possible, since mix_replace_url not set`)
 }
 
 
@@ -169,6 +169,8 @@ function process_template(mix_url){
         template.remove()
     })    
 }
+
+
 
 
 // ##############################

@@ -7,9 +7,11 @@ import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from icecream import ic 
+import pathlib
+import smtplib
+import io
 
-
-ITEMS_PER_PAGE = 10
+ITEMS_PER_PAGE = 4
 
 ############# FUNCTION TO MAKE DATABSE CODE INTO JSON OBJECT #################
 def dict_factory(cursor, row):
@@ -307,6 +309,110 @@ def send_profile_deleted_email(to_email, from_email):
         return "error"
 
 
+############## SEND EMAIL EITHER BLOCK / UNBLOCK ############### 
+def send_item_blocked_unblocked_email(from_email, item_pk):
+    try:
+
+        db = db()
+        q = db.execute("SELECT * FROM items WHERE item_pk = ?",(item_pk,))
+        item = q.fetchone()
+
+        q_user = db.execute("SELECT * FROM users WHERE user_pk = ?",(item['item_owner_fk'],))
+        user = q_user.fetchone()
+
+        if item['item_blocked_at'] == 0:
+            subject = 'Your property has been unblocked'
+        else:
+            subject ='Your property has been blocked'
+
+        message = MIMEMultipart()
+        message["To"] = from_email
+        message["From"] = user['user_email']
+        message["Subject"] = subject
+     
+        email_body_blocked= f""" 
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8" />
+                            <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1.0"
+                            />
+                            <title>Property has been blocked</title>
+                        </head>
+                        <body>
+                            <h1>Your property {item['item_name']} has been blocked</h1>
+                           
+
+                        </body>
+                        </html>
+
+             """
+        
+        email_body_unblocked= f""" 
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8" />
+                            <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1.0"
+                            />
+                            <title>Property has been blocked</title>
+                        </head>
+                        <body>
+                            <h1>Your property {item['item_name']} has been unblocked by an admin</h1>
+                            
+
+                        </body>
+                        </html>
+
+             """
+        
+
+        if item['item_blocked_at'] == 0:
+            email_body = email_body_unblocked
+        else:
+            email_body = email_body_blocked
+
+        messageText = MIMEText(email_body, 'html')
+        message.attach(messageText)
+ 
+        email = from_email
+        password = 'usfkdsdexmqjvbdb'
+ 
+        server = smtplib.SMTP('smtp.gmail.com:587')
+        server.ehlo('Gmail')
+        server.starttls()
+        server.login(email,password)
+        from_email = from_email
+        to_email  = user['user_email']
+        server.sendmail(from_email,to_email,message.as_string())
+ 
+        server.quit()
+    except Exception as ex:
+        ic(ex)
+        return "error"
+
+
+
+############# CHECK IF ADMIN #################
+def Validate_is_admin(user, item_pk):
+    database = db()
+    q = database.execute("SELECT * FROM items WHERE item_pk = ?", (item_pk,))
+    item = q.fetchone()
+
+    if user['user_role'] != 'admin':    
+        if user['user_pk'] == item['item_owner_fk']:
+            return True
+        else:
+            raise Exception("You do not have the rights to do that", 400)
+    else:
+        return True
+
 ############# CHECK IF USER IS LOGGED IN (checks for cookie named user) #################
 def validate_user_logged():
     user = request.get_cookie("user", secret='my_secret_cookie')
@@ -336,6 +442,97 @@ def validate_user_id():
 	if not re.match(USER_ID_REGEX, user_id): raise Exception(error, 400)
 	return user_id
 
+############### VALIDATE ITEMS CREATED NAME ##########################
+ITEM_NAME_MIN = 2
+ITEM_NAME_MAX = 20
+ITEM_NAME_REGEX = "^[a-zA-Z\s]{2,20}$"
+
+def validate_item_name():
+    error = f"name {ITEM_NAME_MIN} to {ITEM_NAME_MAX} lowercase english letters"
+    item_name = request.forms.get("item_name", "").strip()
+  
+    if not re.match(ITEM_NAME_REGEX, item_name): raise Exception(error, 400)
+    return item_name
+
+############## VALIDATE ITEM CREATED PRICE ################
+
+ITEM_PRICE_MIN = 0
+ITEM_PRICE_MAX = 20000
+ITEM_PRICE_REGEX =  "^\d{1,8}(\.\d{1,2})?$" 
+
+def validate_item_price():
+
+
+    error = f"price needs to be bwtween {ITEM_NAME_MIN} and {ITEM_NAME_MAX} "
+    item_price_per_night = request.forms.get("item_price_per_night", "").strip()
+    if not re.match(ITEM_PRICE_REGEX, item_price_per_night): raise Exception(error, 400)
+    return item_price_per_night
+
+
+############## VALIDATE ITEM CREATED IMAGES ################
+ITEM_IMAGES_MIN = 1
+ITEM_IMAGES_MAX = 5
+ITEM_IMAGE_MAX_SIZE = 1024 * 1024 * 5 # 5MB
+
+
+def validate_item_images():
+
+        item_splash_images = request.files.getall("item_splash_images")
+
+        print(item_splash_images)
+        for image in item_splash_images:
+            if pathlib.Path(image.filename).suffix.lower() == "":
+                raise Exception("No image file added", 400)
+                
+            # Read the file into memory and check its size
+            file_in_memory = io.BytesIO(image.file.read())
+            if len(file_in_memory.getvalue()) > ITEM_IMAGE_MAX_SIZE:
+                raise Exception("Image size exceeds the maximum allowed size of 5MB", 400)
+                
+
+            # Don't forget to go back to the start of the file if it's going to be read again later
+            image.file.seek(0)
+
+        if len(item_splash_images) == 0 or len(item_splash_images) < ITEM_IMAGES_MIN or len(item_splash_images) > ITEM_IMAGES_MAX:
+            raise Exception(f"Invalid number of images, must be between {ITEM_IMAGES_MIN} and {ITEM_IMAGES_MAX}", 400)
+
+        allowed_extensions = ['.png', '.jpg','.jpeg', '.webp']
+        for image in item_splash_images:
+            if not pathlib.Path(image.filename).suffix.lower() in allowed_extensions:
+                raise Exception("Invalid image extension", 400)
+            
+        
+        return item_splash_images
+
+
+
+############# GROUP IMAGES TO MATCH THE ITEM #################
+def group_images(rows):
+    # Group images by item_pk
+    items = {}
+    ic("************* rows in x.group_images ****************")
+    ic(rows)
+    for row in rows:
+        item_pk = row['item_pk']
+        if item_pk not in items:
+            items[item_pk] = {
+                'item_pk': row['item_pk'],
+                'item_name': row['item_name'],
+                'item_price_per_night': row['item_price_per_night'],
+                'item_lat': row['item_lat'],
+                'item_lon': row['item_lon'],
+                'item_stars': row['item_stars'],
+                'item_created_at': row['item_created_at'],
+                'item_updated_at': row['item_updated_at'],
+                'item_images': [],
+                'item_blocked_at': row['item_blocked_at'],
+                'item_booked_at': row['item_booked_at']
+                            }
+        if row['image_url']:
+            items[item_pk]['item_images'].append(row['image_url'])
+
+    items = list(items.values())
+    return items
 
 ############# NO CASCHE - prevent browser from rembering login #################
 def no_cache():
