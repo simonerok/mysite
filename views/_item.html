@@ -22,23 +22,22 @@
             / Night
         </span>
         
-                %if get("is_logged", False):
-                    <div class="flex gap-2 align-baseline">
-                        <form id="{{item['item_pk']}}" class="flex">
-                            <input name="item_id" type="text" value="{{item['item_pk']}}" class="hidden">
-                            % if get("role") == 'admin':
-                                % if item.get('item_blocked_at', 0) == 0:
-                                    <button mix-data="[id='{{item['item_pk']}}']"  mix-post="/toggle_item_block">
-                                        Block
-                                    </button>
-                                % else:
-                                    <button mix-data="[id='{{item['item_pk']}}']" mix-post="/toggle_item_unblock">
-                                        Unblock
-                                    </button>
-                                % end
+            %if get("is_logged", False):
+                <div class="flex gap-2 align-baseline">
+                    <form id="{{item['item_pk']}}" class="flex">
+                        % if get("role", '') == 'admin':
+                            % if int(item['item_blocked_at']) == 0:    
+                                <button mix-data="[id='{{item['item_pk']}}']"  mix-put="/toggle_item_block/{{item['item_pk']}}">
+                                    Block
+                                </button>
+                            % else:    
+                                <button mix-data="[id='{{item['item_pk']}}']" mix-put="/toggle_item_unblock/{{item['item_pk']}}">
+                                    Unblock
+                                </button>
                             % end
-                        </form>
-                    </div>
-                % end
+                        % end
+                    </form>
+                </div>
+            % end
         </div>
 </div>

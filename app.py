@@ -51,13 +51,18 @@ def _():
         items = q.fetchall()
         ic(items)
         is_logged = False
+        user = None
         try:    
-            x.validate_user_logged()
+            user_pk = x.validate_user_logged()
+            if (user_pk != None):
+                db = x.db()
+                q = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,))
+                user = q.fetchone()
             is_logged = True
         except:
             pass
 
-        return template("index.html", items=items, is_logged=is_logged, mapbox_token=credentials.mapbox_token)
+        return template("index.html", items=items, is_logged=is_logged, mapbox_token=credentials.mapbox_token, role=user['user_role'])
     except Exception as ex:
         ic(ex)
         return ex
@@ -338,8 +343,15 @@ def _():
         db = x.db()
         q = db.execute("SELECT * FROM users WHERE user_email = ? LIMIT 1", (user_email,))
         user = q.fetchone()
-        x.reset_password_email("ssimone12@gmail.com", user_email, user["user_pk"])
-        return f"{user}"
+        x.reset_password_email(user_email, "ssimone12@gmail.com", user["user_pk"])
+        return f"""
+            <template mix-target="#toast">
+                <div mix-ttl="3000" class="ok">
+                    Password has beeen updated. Check your email.
+                </div>
+            </template>
+            """
+
     except Exception as ex:
         ic(ex, "reset password email not sent")
     finally:
@@ -434,7 +446,7 @@ def _(id):
             </template>
             """
     finally:
-        pass
+        if "db" in locals(): db.close()
 
 
 ########### EDIT USER ###################
@@ -671,75 +683,60 @@ def _(page_number):
        
 
 ############# BLOCK PROPERTIES #################
-@post("/toggle_item_block")
-def _():
+@put("/toggle_item_block/<item_pk>")
+def _(item_pk):
     try:
-       item_id = request.forms.get("item_id", "").strip() 
-       user = x.validate_user_logged()
-       x.Validate_is_admin(user, item_id)
+       user_pk = x.validate_user_logged()
+       x.validate_is_admin(user_pk, item_pk)
        item_blocked_at = int(time.time())
-      
 
        db = x.db()
-       q = db.execute("UPDATE items SET item_blocked_at = ? WHERE item_pk = ?",(item_blocked_at, item_id))
+       db.execute("UPDATE items SET item_blocked_at = ? WHERE item_pk = ?",(item_blocked_at, item_pk))
+
        db.commit()
 
-       x.send_item_blocked_unblocked_email("ssimone12@gmail.com", item_id)
+       x.send_item_blocked_unblocked_email("ssimone12@gmail.com", item_pk)
 
        return f"""
-        <template mix-target="[id='{item_id}']" mix-replace>
+        <template mix-target="[id='{item_pk}']" mix-replace>
 
-            <form id="{item_id}">
-
-            <input name="item_id" type="text" value="{item_id}" class="hidden">
-             <button
-            mix-data="[id='{item_id}']"
-            mix-post="/toggle_item_unblock"
-             >
-            Unblock
-        </button>
-
-        </form>
+            <form id="{item_pk}">
+                <button mix-data="[id='{item_pk}']" mix-put="/toggle_item_unblock/{item_pk}">
+                    Unblock
+                </button>
+            </form>
         </template>
         """
     except Exception as ex:
-        pass
+        ic(ex)
     finally:
         if "db" in locals(): db.close()    
 
 
 ############ UNBLOCK ITEM ##################
-@post("/toggle_item_unblock")
-def _():
+@put("/toggle_item_unblock/<item_pk>")
+def _(item_pk):
     try:
-       item_id = request.forms.get("item_id", "").strip() 
        user = x.validate_user_logged()
-       x.Validate_is_admin(user, item_id)
+       x.validate_is_admin(user, item_pk)
        item_blocked_at = 0
-       ic(item_blocked_at, "item block clicked")
 
        db = x.db()
-       q = db.execute("UPDATE items SET item_blocked_at = ? WHERE item_pk = ?",(item_blocked_at, item_id))
+       db.execute("UPDATE items SET item_blocked_at = ? WHERE item_pk = ?",(item_blocked_at, item_pk))
        db.commit()
 
-       x.send_item_blocked_unblocked_email("ssimone12@gmail.com", item_id)
+       x.send_item_blocked_unblocked_email("ssimone12@gmail.com", item_pk)
        return f"""
-        <template mix-target="[id='{item_id}']" mix-replace>
-
-         <form id="{item_id}">
-            <input name="item_id" type="text" value="{item_id}" class="hidden">
-        <button
-            mix-data="[id='{item_id}']"
-            mix-post="/toggle_item_block"
-        >
-           Block
-        </button>
-         </form>
+        <template mix-target="[id='{item_pk}']" mix-replace>
+            <form id="{item_pk}">
+                <button mix-data="[id='{item_pk}']"  mix-put="/toggle_item_block/{item_pk}">
+                    Block
+                </button>
+            </form>
         </template>
         """
     except Exception as ex:
         ic(ex)
-        pass
     finally:
         if "db" in locals(): db.close()    
 

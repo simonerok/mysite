@@ -312,12 +312,11 @@ def send_profile_deleted_email(to_email, from_email):
 ############## SEND EMAIL EITHER BLOCK / UNBLOCK ############### 
 def send_item_blocked_unblocked_email(from_email, item_pk):
     try:
-
-        db = db()
-        q = db.execute("SELECT * FROM items WHERE item_pk = ?",(item_pk,))
+        database = db()
+        q = database.execute("SELECT * FROM items WHERE item_pk = ?",(item_pk,))
         item = q.fetchone()
 
-        q_user = db.execute("SELECT * FROM users WHERE user_pk = ?",(item['item_owner_fk'],))
+        q_user = database.execute("SELECT * FROM users WHERE user_pk = ?",(item['item_owner_fk'],))
         user = q_user.fetchone()
 
         if item['item_blocked_at'] == 0:
@@ -396,22 +395,32 @@ def send_item_blocked_unblocked_email(from_email, item_pk):
     except Exception as ex:
         ic(ex)
         return "error"
+    finally: 
+        if "db" in locals(): database.close()
 
 
 
 ############# CHECK IF ADMIN #################
-def Validate_is_admin(user, item_pk):
-    database = db()
-    q = database.execute("SELECT * FROM items WHERE item_pk = ?", (item_pk,))
-    item = q.fetchone()
+def validate_is_admin(user_pk, item_pk):
+    try:
+        database = db()
+        q = database.execute("SELECT * FROM items WHERE item_pk = ?", (item_pk,))
+        item = q.fetchone()
 
-    if user['user_role'] != 'admin':    
-        if user['user_pk'] == item['item_owner_fk']:
-            return True
+        user_q = database.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,))
+        user = user_q.fetchone()
+
+        if (user['user_role'] != 'admin'):    
+            if user['user_pk'] == item['item_owner_fk']:
+                return True
+            else:
+                return False
         else:
-            raise Exception("You do not have the rights to do that", 400)
-    else:
-        return True
+            return True
+    except Exception as ex:
+        ic(ex)
+    finally:
+        if "db" in locals(): database.close()    
 
 ############# CHECK IF USER IS LOGGED IN (checks for cookie named user) #################
 def validate_user_logged():
