@@ -49,7 +49,6 @@ def _():
         # show newest items first = DESC
         q = db.execute("SELECT * FROM items ORDER BY item_created_at DESC LIMIT 0, ?", (x.ITEMS_PER_PAGE,))
         items = q.fetchall()
-        ic(items)
         is_logged = False
         user = None
         try:    
@@ -62,7 +61,7 @@ def _():
         except:
             pass
 
-        return template("index.html", items=items, is_logged=is_logged, mapbox_token=credentials.mapbox_token, role=user['user_role'])
+        return template("index.html", items=items, is_logged=is_logged, mapbox_token=credentials.mapbox_token, role=user['user_role'] if user else None)
     except Exception as ex:
         ic(ex)
         return ex
@@ -169,10 +168,12 @@ def _():
 
                 # Set the user cookie
                 response.set_cookie("user", user["user_pk"], secret="my_secret_cookie", secure=x.is_cookie_https)
-                return """
-                    <template mix-redirect="/profile">
-                    </template>
-                """
+        if 'user_role' in user:
+            response.set_cookie("role", user['user_role'], secret='my_secret_cookie')
+        return """
+            <template mix-redirect="/profile">
+            </template>
+        """
     except Exception as ex:
         try:
             print(ex)
@@ -564,85 +565,14 @@ def _():
     finally:
         if "db" in locals(): db.close()
 
-############# CREATE PROPERTY #################
-@post("/create_property")
-def _():
-    try:
-        item_pk = uuid.uuid4().hex
-        item_name = x.validate_item_name()
-        item_lat = random.uniform(55.600, 55.700)
-        item_lon = random.uniform(12.400, 12.600)
-        item_stars = 5
-        item_price_per_night  = x.validate_item_price()
-        item_created_at = int(time.time())
-        item_updated_at = 0
-        item_owner_fk = "55ad74495a114c28b80fd73be024aadd"
-        item_blocked_at = 0
 
-        db = x.db()
-
-        # Images
-        item_images = x.validate_item_images()
-        print("##### this is images ##########")
-        print(item_images)
-       
-
-        if item_images:
-                # Process each image, rename it, save it, and store just the filename in the database
-            for index, image in enumerate(item_images, start=1):
-                image_pk =  uuid.uuid4().hex
-                image_created_at = int(time.time())
-                filename = f"{item_pk}_{index}.{image.filename.split('.')[-1]}"
-                path = f"images/{filename}"
-                image.save(path)  # Save the image with the new filename
-
-                # Insert the image filename into the item_images table (without path)
-                db.execute("INSERT INTO items_images (image_pk,image_url,item_fk, image_created_at) VALUES (?,?, ?,?)", (image_pk,filename,item_pk, image_created_at))
-                db.commit()
-
-                ic("##############***********w**'##################")
-                ic(item_images)
-                q = db.execute("INSERT INTO items (item_pk, item_name, item_lat, item_lon, item_stars, item_price_per_night, item_created_at, item_updated_at, item_owner_fk, item_blocked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)", 
-                    (item_pk, item_name, item_lat, item_lon, item_stars, item_price_per_night, item_created_at, item_updated_at, item_owner_fk, item_blocked_at))
-                db.commit()
-            
-                return """
-                    <template mix-redirect="/profile">
-
-                    </template>
-                """
-    except Exception as ex:
-        ic("########################### create property exception print:")
-        try:
-            ic(ex)
-            response.status = ex.args[1]
-            return f"""
-            <template mix-target="#toast">
-                <div mix-ttl="3000" class="error">
-                    {ex.args[0]}
-                </div>
-            </template>
-            """
-        except Exception as ex:
-            ic(ex)
-            response.status = 500
-            return f"""
-            <template mix-target="#toast">
-                <div mix-ttl="3000" class="error">
-                   System under maintainance
-                </div>
-            </template>
-            """
-    finally:
-        if "db" in locals(): db.close()
-
-    
-    
 
 ###½########## MORE ITEMS ##################
 @get("/items/page/<page_number>")
 def _(page_number):
     try:
+
+
         db = x.db()
         next_page = int(page_number) + 1
         offset = (int(page_number) - 1) * x.ITEMS_PER_PAGE
@@ -651,18 +581,24 @@ def _(page_number):
                                 LIMIT ? OFFSET {offset}
                         """, (x.ITEMS_PER_PAGE,))
         items = q.fetchall()
-        ic(items)
 
         is_logged = False
+        user_role = None
+        user_pk = x.validate_user_logged()
+        q = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,))
+        user = q.fetchone()
+        print("############################### myuser")
+        print(user_pk)        
         try:
-            x.validate_user_logged()
             is_logged = True
+            user_role = user['user_role']
         except:
             pass
 
         html = ""
         for item in items: 
-            html += template("_item", item=item, is_logged=is_logged)
+            html += template("_item", item=item, is_logged=is_logged, role=user_role)
+            ic(user_role)
         btn_more = template("__btn_more", page_number=next_page)
         if len(items) < x.ITEMS_PER_PAGE: 
             btn_more = ""
@@ -673,13 +609,13 @@ def _(page_number):
         <template mix-target="#more" mix-replace>
             {btn_more}
         </template>
-        <template mix-function="test">{json.dumps(items)}</template>
+        
         """
     except Exception as ex:
         ic(ex)
-        return "ups..."
+        return "Issue fetching more properties..."
     finally:
-        if "db" in locals(): db.close() 
+        if "db" in locals(): db.close()
        
 
 ############# BLOCK PROPERTIES #################

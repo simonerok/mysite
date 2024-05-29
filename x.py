@@ -342,7 +342,7 @@ def send_item_blocked_unblocked_email(from_email, item_pk):
                             <title>Property has been blocked</title>
                         </head>
                         <body>
-                            <h1>Your property {item['item_name']} has been blocked</h1>
+                            <h1>Your property "{item['item_name']}" has been blocked</h1>
                            
 
                         </body>
@@ -363,7 +363,7 @@ def send_item_blocked_unblocked_email(from_email, item_pk):
                             <title>Property has been blocked</title>
                         </head>
                         <body>
-                            <h1>Your property {item['item_name']} has been unblocked by an admin</h1>
+                            <h1>Your property "{item['item_name']}" has been unblocked</h1>
                             
 
                         </body>
@@ -430,14 +430,15 @@ def validate_user_logged():
     return user
 
 ############# VALIDATE USER IS LOGGED IN (cheks for cookie named id while also prevent cashing) #################    
-def validate_logged():
-    # Prevent logged pages from caching
-    response.add_header("Cache-Control", "no-cache, no-store, must-revalidate")
-    response.add_header("Pragma", "no-cache")
-    response.add_header("Expires", "0")  
-    user_id = request.get_cookie("id", secret ='my_secret_cookie')
-    if not user_id: raise Exception("XXXXXXXXXXX user not logged XXXXXXXXX", 400)
-    return user_id
+#def validate_logged():
+#    response.add_header("Cache-Control", "no-cache, no-store, must-revalidate")
+#    response.add_header("Pragma", "no-cache")
+#    response.add_header("Expires", "0")  
+#    user_id = request.get_cookie("id", secret ='my_secret_cookie')
+#    if not user_id: raise Exception("XXXXXXXXXXX user not logged XXXXXXXXX", 400)
+#    return user_id
+
+
 
 
 ############### VALIDATE USER ID ##########################
@@ -514,34 +515,6 @@ def validate_item_images():
         return item_splash_images
 
 
-
-############# GROUP IMAGES TO MATCH THE ITEM #################
-def group_images(rows):
-    # Group images by item_pk
-    items = {}
-    ic("************* rows in x.group_images ****************")
-    ic(rows)
-    for row in rows:
-        item_pk = row['item_pk']
-        if item_pk not in items:
-            items[item_pk] = {
-                'item_pk': row['item_pk'],
-                'item_name': row['item_name'],
-                'item_price_per_night': row['item_price_per_night'],
-                'item_lat': row['item_lat'],
-                'item_lon': row['item_lon'],
-                'item_stars': row['item_stars'],
-                'item_created_at': row['item_created_at'],
-                'item_updated_at': row['item_updated_at'],
-                'item_images': [],
-                'item_blocked_at': row['item_blocked_at'],
-                'item_booked_at': row['item_booked_at']
-                            }
-        if row['image_url']:
-            items[item_pk]['item_images'].append(row['image_url'])
-
-    items = list(items.values())
-    return items
 
 ############# NO CASCHE - prevent browser from rembering login #################
 def no_cache():
