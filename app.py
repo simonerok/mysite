@@ -682,4 +682,4 @@ def _(item_pk):
 if "PYTHONANYWHERE_DOMAIN" in os.environ:
     application = default_app()
 else:
-  run(host="0.0.0.0", port=80, debug=True, reloader=True, interval=0.1) 
+    run(host="0.0.0.0", port=80, debug=True, reloader=True, interval=0.1) 
