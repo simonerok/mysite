@@ -1,11 +1,11 @@
 %include("_header.html" )
 
-<main>
+<main class="mb-8">
 
     <div class="px-4 text-2xl font-bold text-center mb-4">Hello {{user["user_first_name"]}}</div>
     <h1 class="text-center text-2xl m-4 mx-auto">Edit your profile</h1>  
                 <!-- edit profile -->  
-    <iv class="w-full flex flex-col items-center">
+    <div class="w-full flex flex-col items-center">
         
             %include("__form_edit_user", user=user )
     
@@ -15,7 +15,7 @@
        
         %include("__user_table", role=role )
     </div>
-    
+    </div>
 </main>
 
 %include("_footer.html")

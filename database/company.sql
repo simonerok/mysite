@@ -11,7 +11,7 @@ CREATE TABLE users(
     user_username           TEXT,
     user_first_name         TEXT,
     user_last_name          TEXT,
-    user_email              TEXT,
+    user_email              TEXT UNIQUE,
     user_password           TEXT,
     user_role               TEXT,
     user_created_at         INTEGER,
@@ -38,12 +38,12 @@ INSERT INTO users VALUES(
 );
 
 SELECT * FROM users;
-SELECT * FROM users WHERE user_email = 'sofi78a4@stud.kea.dk';
+
 
 /* used for developing */
 UPDATE users SET user_role = "admin" WHERE user_username = "adminSofia";
-UPDATE users SET user_email = "ssimone12@gmail.com" WHERE user_username = "AdminSofia";
-DELETE FROM users WHERE user_email = 'sofi78a4@stud.kea.dk';
+UPDATE users SET user_email = "ss@ss.dk" WHERE user_username = "adminSofia";
+DELETE FROM users WHERE user_is_verified = 0;
 
 
 
@@ -55,8 +55,8 @@ CREATE TABLE items(
     item_owner_fk           TEXT,
     item_name               TEXT,
     item_splash_image       TEXT,
-    item_lat                TEXT,
-    item_lon                TEXT,
+    item_lat                REAL,  
+    item_lon                REAL,  
     item_stars              REAL,
     item_price_per_night    REAL,
     item_created_at         INTEGER,
@@ -65,6 +65,11 @@ CREATE TABLE items(
     FOREIGN KEY (item_owner_fk) REFERENCES users(user_pk),
     PRIMARY KEY(item_pk)
 ) WITHOUT ROWID;
+
+-- #Setting the owner to be partner with id: df9d6ede859048398d592fc43a8fb772
+SELECT items.*, users.user_username AS owner_name
+FROM items
+JOIN users ON items.item_owner_fk = users.user_pk
 
 
 INSERT INTO items VALUES

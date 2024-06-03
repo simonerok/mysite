@@ -51,17 +51,27 @@ def _():
         items = q.fetchall()
         is_logged = False
         user = None
+        role = None  
+
         try:    
             user_pk = x.validate_user_logged()
             if (user_pk != None):
                 db = x.db()
                 q = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,))
                 user = q.fetchone()
-            is_logged = True
+                is_logged = True
+                role = user['user_role'] if user else None  # Set role when u are logged in
         except:
             pass
 
-        return template("index.html", items=items, is_logged=is_logged, mapbox_token=credentials.mapbox_token, role=user['user_role'] if user else None)
+        # find owner of the items in the db
+        items = db.execute("""
+        SELECT items.*, users.user_username AS owner_name, users.user_role AS owner_role
+        FROM items
+        JOIN users ON items.item_owner_fk = users.user_pk
+        """).fetchall()
+
+        return template("index.html", items=items, is_logged=is_logged, mapbox_token=credentials.mapbox_token, role=role)
     except Exception as ex:
         ic(ex)
         return ex
@@ -86,10 +96,10 @@ def _():
 def _():
     response.delete_cookie("user")
     response.add_header("Cache-Control", "no-cache, no-store, must-revalidate")  # Prevent caching
-    response.add_header("Pragma", "no-cache")  # Prevent caching
+    response.add_header("Pragma", "no-cache")  
     response.status = 303
     response.set_header('Location', '/login')
-    return
+    
 
 ##############################
 @get("/success")
@@ -100,6 +110,7 @@ def _():
 @get("/forgot-password")
 def _():
         return template("forgot_password.html")
+    
  
 ##############################
 @get("/not_verified")
@@ -119,7 +130,7 @@ def _(file_name):
 
 
 ##############################
-
+#if you have deleted your account as a user you can restore your profile here 
 @get("/profile/restore/<user_pk>")
 def _(user_pk):
     try:
@@ -127,6 +138,7 @@ def _(user_pk):
         db.execute("UPDATE users SET user_deleted_at = 0 WHERE user_pk = ?", (user_pk,))
         db.commit()
         redirect("/login")
+        # HTTPResponse ensures that the call will not be handelet as an error
     except HTTPResponse:
         raise
     except Exception as ex:
@@ -147,21 +159,28 @@ def _():
         if not user: raise Exception("user not found", 400)
         ic("user: ", user)
         
-        
-        # check user
+        # check user and validate if deleted or not verified
         if user:
             if not bcrypt.checkpw(user_password.encode(), user["user_password"]): raise Exception("Invalid credentials", 400)
             if user["user_is_verified"] != 1:
-                return template("not_verified.html")
+                return """
+        <template mix-target="main" mix-replace>
+            template "not_verified.html"
+        </template>
+        <template mix-redirect="/not_verified">
+        </template>
+        """
             if user["user_deleted_at"] != 0: 
+                ic("user previously deleted")
                 return f"""
                     <template mix-target="main">
                         <div>
                             <h2>This profile has been previously deleted</h2>
-                            <a href="/profile/restore/{user['user_pk']}">Click here to restore it!</a>
+                            <a href="/profile/restore/{user['user_pk']}" style="color: blue; text-decoration: underline;">Click here to restore it!</a>
                         </div>
                     </template>
                 """
+            
             else:
                 user.pop("user_password") # Do not put the user's password in the cookie
                 ic(user)
@@ -176,28 +195,27 @@ def _():
         """
     except Exception as ex:
         try:
-            print(ex)
+            ic(ex)
             response.status = ex.args[1]
             return f"""
             <template mix-target="#toast">
-                <div mix-ttl="3000" class="error">
-                    {ex.args[0]}
-                </div>
+                <div mix-ttl="5000" class="error">
+                {ex.args[0]}
+            </div>
             </template>
             """
         except Exception as ex:
-            print(ex)
+            ic(ex)
             response.status = 500
             return f"""
             <template mix-target="#toast">
-                <div mix-ttl="3000" class="error">
-                   System under maintainance
+                <div mix-ttl="5000" class="error">
+                System under maintainance
                 </div>
             </template>
             """
     finally:
         if "db" in locals(): db.close()
-
 
 ###"###################################################
 @get("/profile")
@@ -269,24 +287,34 @@ def _():
         <template mix-redirect="/success">
         </template>
         """
+    #except Exception as ex:
+    #    try:
+    #        ic(ex)
+    #        response.status = ex.args[1]
+    #        return f"""
+    #        <template mix-target="#toast">
+    #            <div mix-ttl="5000" class="error">
+    #            {ex.args[0]}
+    #            </div>
+    #        </template>
+    #        """
+
+    except ValueError as ve:
+            ic(ve)
+            if "user_email" in str(ex): 
+                return f"""
+                <template mix-target="#message">
+                    {ex.args[0]}
+                </template>
+                """
+            
     except Exception as ex:
-        try:
-            ic(ex)
-            response.status = ex.args[1]
-            return f"""
-            <template mix-target="#toast">
-                <div mix-ttl="3000" class="error">
-                {ex.args[0]}
-                </div>
-            </template>
-            """
-        except Exception as ex:
             ic(ex)
             response.status = 500
             return f"""
             <template mix-target="#toast">
                 <div mix-ttl="3000" class="error">
-                System under maintainance
+                   System under maintainance
                 </div>
             </template>
             """
@@ -347,8 +375,8 @@ def _():
         x.reset_password_email(user_email, "ssimone12@gmail.com", user["user_pk"])
         return f"""
             <template mix-target="#toast">
-                <div mix-ttl="3000" class="ok">
-                    Password has beeen updated. Check your email.
+                <div mix-ttl="5000" class="ok">
+                    Password email has been sent. Please check your email.
                 </div>
             </template>
             """
@@ -415,8 +443,8 @@ def _(id):
             </style>
         </head>
         <body>
-            <div>
-                <h1 class="text-2xl font-bold">{user_first_name}</h1>
+            <div class="text-center mt-4">
+                <h1 class="text-2xl font-bold ">Hello {user_first_name}</h1>
                 <p>The password has been changed</p>
                 <a class="text-blue-600 underline" href="/login">Go to login</a>
             </div>
@@ -431,7 +459,7 @@ def _(id):
             response.status = ex.args[1]
             return f"""
             <template mix-target="#toast">
-                <div mix-ttl="3000" class="error">
+                <div mix-ttl="5000" class="error">
                     {ex.args[0]}
                 </div>
             </template>
@@ -441,7 +469,7 @@ def _(id):
             response.status = 500
             return f"""
             <template mix-target="#toast">
-                <div mix-ttl="3000" class="error">
+                <div mix-ttl="5000" class="error">
                    System under maintainance
                 </div>
             </template>
@@ -484,7 +512,7 @@ def _():
                 x.send_profile_updated_email(user_email, "ssimone12@gmail.com")
                 return """
                 <template mix-target="#toast">
-                    <div mix-ttl="3000" class="ok">
+                    <div mix-ttl="5000" class="ok">
                         Your profile has been updated.
                     </div>
                 </template>
@@ -495,6 +523,7 @@ def _():
                     }, 3000);
                 </script>
                 """
+            # HTTPResponse ensures that the call will not be handelet as an error
         except HTTPResponse:
             raise
 
@@ -525,12 +554,12 @@ def _():
 
         ic(user_pk)
 
-        # delete user funciton
+        # delete user by id
         db = x.db()
         q = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,))
         logged_user = q.fetchone()
         db.commit() 
-        ic(logged_user) 
+        ic("my user", logged_user) 
 
         if not bcrypt.checkpw(user_password.encode(), logged_user["user_password"]): raise Exception("Invalid credentials", 400)
     
@@ -546,7 +575,7 @@ def _():
             x.send_profile_deleted_email(logged_user['user_email'], "ssimone12@gmail.com")
             return """
             <template mix-target="#toast">
-                <div mix-ttl="3000" class="ok">
+                <div mix-ttl="5000" class="ok">
                     Your profile has been deleted.
                 </div>
             </template>
@@ -556,7 +585,7 @@ def _():
         ic(ex)
         return f"""
             <template mix-target="#toast">
-                <div mix-ttl="3000" class="error">
+                <div mix-ttl="5000" class="error">
                     {ex} Try again.
                 </div>
             </template>
@@ -571,8 +600,6 @@ def _():
 @get("/items/page/<page_number>")
 def _(page_number):
     try:
-
-
         db = x.db()
         next_page = int(page_number) + 1
         offset = (int(page_number) - 1) * x.ITEMS_PER_PAGE
@@ -587,11 +614,12 @@ def _(page_number):
         user_pk = x.validate_user_logged()
         q = db.execute("SELECT * FROM users WHERE user_pk = ?", (user_pk,))
         user = q.fetchone()
-        print("############################### myuser")
-        print(user_pk)        
+        ic("############################### myuser")
+        ic(user_pk)        
         try:
             is_logged = True
             user_role = user['user_role']
+            
         except:
             pass
 
@@ -613,7 +641,13 @@ def _(page_number):
         """
     except Exception as ex:
         ic(ex)
-        return "Issue fetching more properties..."
+        return f"""
+            <template mix-target="#toast">
+                <div mix-ttl="5000" class="error">
+                   System under maintainance
+                </div>
+            </template>
+            """
     finally:
         if "db" in locals(): db.close()
        
@@ -678,7 +712,7 @@ def _(item_pk):
 
 
 ##############################
-#function to run the app and check if it is running on pythonanywhere or local
+#function to  check if it is running on pythonanywhere or local
 if "PYTHONANYWHERE_DOMAIN" in os.environ:
     application = default_app()
 else:
